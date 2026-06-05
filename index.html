@@ -994,7 +994,9 @@ function render() {
           </div>
         </div>
         <div class="ai-status" id="ai-status">
-          <span id="ai-status-text">Chưa kết nối</span>
+          <span id="ai-status-text">Chưa phân tích</span>
+          <button class="btn-primary ttr-accent" style="margin-left: 10px;" onclick="generateAIInsights()">Phân tích ngay</button>
+        </div>  
         </div>
       </div>
       <div class="ai-body" id="ai-body">
@@ -1155,7 +1157,99 @@ function render() {
     });
   }
 }
+// ── AI INSIGHTS LOGIC ──
 
+// 1. Hàm gom dữ liệu hiện tại trên Dashboard để gửi cho AI
+function getAIDataContext() {
+  const f = getFilters();
+  
+  // Tính tổng số liệu cho Top Format
+  const formatMap = {};
+  const currentFilteredData = applyFilters(allData.filter(r => r['Brand'] === currentBrand));
+  
+  currentFilteredData.forEach(r => {
+    const fmt = r['Format'] || 'Unknown';
+    if (!formatMap[fmt]) formatMap[fmt] = { spend: 0, results: 0 };
+    formatMap[fmt].spend += num(r, 'Amount spent (VND)');
+    formatMap[fmt].results += num(r, 'Results');
+  });
+  
+  // Tính Top 3 Format theo spend
+  const topFormats = Object.entries(formatMap)
+    .sort((a, b) => b[1].spend - a[1].spend)
+    .slice(0, 3)
+    .map(f => ({
+      name: f[0],
+      spend: f[1].spend,
+      cpr: f[1].results > 0 ? Math.round(f[1].spend / f[1].results) : 0
+    }));
+
+  return {
+    brand: currentBrand,
+    filters: f,
+    overall: {
+      spend: aggregate(currentFilteredData).spend,
+      cpm: aggregate(currentFilteredData).cpm,
+      cpr: aggregate(currentFilteredData).cpr
+    },
+    topFormats: topFormats
+  };
+}
+
+// 2. Hàm gọi Cloudflare Worker và Render kết quả
+async function generateAIInsights() {
+  const aiBody = document.getElementById('ai-body');
+  const aiStatus = document.getElementById('ai-status-text');
+  
+  // Hiển thị trạng thái đang tải
+  aiStatus.textContent = 'Đang phân tích...';
+  aiBody.innerHTML = `
+    <div class="ai-loading" style="justify-content: center; padding: 40px;">
+      <div class="ai-spinner"></div>
+      <div>AI đang đọc dữ liệu chiến dịch<div class="typing-dots"><span></span><span></span><span></span></div></div>
+    </div>
+  `;
+
+  const contextData = getAIDataContext();
+
+  try {
+    // LƯU Ý: Thay URL này bằng URL Cloudflare Worker thực tế của bạn sau khi deploy
+    const response = await fetch('https://your-worker-url.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(contextData)
+    });
+
+    if (!response.ok) throw new Error('Lỗi khi gọi AI');
+    
+    // Đọc kết quả JSON từ Backend trả về
+    const insights = await response.json(); 
+    
+    // Render kết quả ra giao diện
+    aiStatus.textContent = 'Đã cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN');
+    aiBody.innerHTML = `
+      <div class="ai-insights-grid">
+        ${insights.map(item => `
+          <div class="ai-insight-card ${item.type.toLowerCase()}">
+            <div class="ai-insight-type">${item.type}</div>
+            <div class="ai-insight-text">${item.observation}</div>
+            <div class="ai-recommendation"><strong>Action:</strong> ${item.recommendation}</div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (error) {
+    console.error(error);
+    aiStatus.textContent = 'Kết nối thất bại';
+    aiBody.innerHTML = `
+      <div class="error-state">
+        <strong>Không thể tải AI Insights</strong>
+        <p>Vui lòng kiểm tra lại kết nối backend hoặc API Key.</p>
+        <button class="btn-ghost" onclick="generateAIInsights()" style="margin: 12px auto 0;">Thử lại</button>
+      </div>
+    `;
+  }
+}
 // ── Actions ──
 function setSort(col) {
   if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = -1; }
