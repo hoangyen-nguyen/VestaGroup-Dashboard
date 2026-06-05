@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesta Group — Campaign Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f12;
+    --bg2: #131619;
+    --bg3: #1a1e24;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaed;
+    --muted: #7a8494;
+    --accent-banan: #f5c842;
+    --accent-ttr: #5b8ef0;
+    --green: #3ecf8e;
+    --red: #f46a6a;
+    --orange: #f0924a;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  header {
+    padding: 20px 32px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 16px;
+  }
+  .brand-logo {
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    letter-spacing: 0.12em; text-transform: uppercase;
+  }
+  .brand-logo span { color: var(--text); }
+  .last-updated {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .dot-live {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 0;
+  }
+  .tab-btn {
+    padding: 12px 28px; font-family: var(--font); font-size: 13px; font-weight: 500;
+    border: none; background: transparent; cursor: pointer;
+    color: var(--muted); border-bottom: 2px solid transparent;
+    transition: all .2s; display: flex; align-items: center; gap: 8px;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active[data-brand="Banan"] { color: var(--accent-banan); border-bottom-color: var(--accent-banan); }
+  .tab-btn.active[data-brand="TTR"] { color: var(--accent-ttr); border-bottom-color: var(--accent-ttr); }
+  .tab-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+  }
+  .tab-btn[data-brand="Banan"] .tab-dot { background: var(--accent-banan); }
+  .tab-btn[data-brand="TTR"] .tab-dot { background: var(--accent-ttr); }
+
+  /* MAIN */
+  main { padding: 28px 32px; }
+
+  /* FILTER BAR */
+  .filter-bar {
+    display: flex; gap: 10px; margin-bottom: 24px; align-items: center; flex-wrap: wrap;
+  }
+  .filter-label { font-size: 12px; color: var(--muted); margin-right: 4px; }
+  select {
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+    font-family: var(--font); font-size: 12px; padding: 6px 12px;
+    border-radius: 6px; cursor: pointer; outline: none;
+    transition: border-color .2s;
+  }
+  select:hover, select:focus { border-color: rgba(255,255,255,0.25); }
+  .refresh-btn {
+    margin-left: auto; background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--muted); font-family: var(--font); font-size: 12px;
+    padding: 6px 14px; border-radius: 6px; cursor: pointer;
+    transition: all .2s; display: flex; align-items: center; gap: 6px;
+  }
+  .refresh-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.25); }
+  .refresh-btn svg { transition: transform .4s; }
+  .refresh-btn.spinning svg { animation: spin .6s linear; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: border-color .2s, transform .15s;
+  }
+  .kpi-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 2px; border-radius: 10px 10px 0 0;
+  }
+  .kpi-card.banan::before { background: var(--accent-banan); }
+  .kpi-card.ttr::before { background: var(--accent-ttr); }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .kpi-value { font-size: 26px; font-weight: 600; line-height: 1; margin-bottom: 6px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* CHARTS ROW */
+  .charts-row {
+    display: grid; grid-template-columns: 1.6fr 1fr;
+    gap: 16px; margin-bottom: 28px;
+  }
+  .chart-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px;
+  }
+  .chart-title {
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* TABLE */
+  .table-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .table-header {
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .table-title { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 11px; color: var(--muted); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 10px 16px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 10px 16px; font-size: 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td.mono { font-family: var(--mono); font-size: 11px; }
+  .badge {
+    display: inline-block; font-size: 10px; padding: 2px 8px;
+    border-radius: 4px; font-weight: 500; font-family: var(--mono);
+  }
+  .badge-traffic { background: rgba(91,142,240,0.15); color: var(--accent-ttr); }
+  .badge-ctm { background: rgba(245,200,66,0.15); color: var(--accent-banan); }
+  .badge-other { background: rgba(255,255,255,0.07); color: var(--muted); }
+
+  /* Loading */
+  .loading-state {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 80px 32px; gap: 16px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 32px; height: 32px; border: 2px solid var(--border);
+    border-top-color: var(--accent-banan); border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .error-state {
+    background: rgba(244,106,106,0.08); border: 1px solid rgba(244,106,106,0.2);
+    border-radius: 10px; padding: 24px; text-align: center; color: var(--red);
+  }
+  .error-state p { margin-top: 8px; font-size: 12px; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    header { padding: 16px; }
+    main { padding: 16px; }
+    .charts-row { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="brand-logo">Vesta Group <span>/ Campaign Dashboard '26</span></div>
+    <div class="last-updated">
+      <div class="dot-live"></div>
+      <span id="update-time">—</span>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-brand="Banan" onclick="switchBrand('Banan',this)">
+      <span class="tab-dot"></span> Banan
+    </button>
+    <button class="tab-btn" data-brand="TTR" onclick="switchBrand('TTR',this)">
+      <span class="tab-dot"></span> TTR
+    </button>
+  </div>
+</header>
+
+<main id="main-content">
+  <div class="loading-state" id="loading">
+    <div class="spinner"></div>
+    <span>Đang tải dữ liệu từ Google Sheets…</span>
+  </div>
+</main>
+
+<script>
+const SHEET_ID = '1wqArly1SMp4ahfnccMT1nKYal9A_VDg-DsIF8gRBkLA';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+
+let allData = [];
+let currentBrand = 'Banan';
+let charts = {};
+
+// ── Parse CSV (handles quoted commas) ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseCSVLine(line);
+    const row = {};
+    headers.forEach((h, i) => row[h.trim()] = (vals[i] || '').trim());
+    return row;
+  });
+}
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+function fmt(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return n.toLocaleString();
+}
+function fmtVND(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B ₫';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M ₫';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K ₫';
+  return n.toLocaleString() + ' ₫';
+}
+
+async function loadData() {
+  try {
+    const res = await fetch(CSV_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    allData = parseCSV(text).filter(r => r['Brand'] && r['Date']);
+    document.getElementById('update-time').textContent = 'Updated ' + new Date().toLocaleTimeString('vi-VN');
+    render();
+  } catch(e) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-state">
+        <strong>Không tải được dữ liệu</strong>
+        <p>Kiểm tra lại quyền chia sẻ Google Sheet hoặc kết nối mạng.<br><small>${e.message}</small></p>
+      </div>`;
+  }
+}
+
+function switchBrand(brand, btn) {
+  currentBrand = brand;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function getFilters() {
+  const month = document.getElementById('filter-month')?.value || 'all';
+  const activity = document.getElementById('filter-activity')?.value || 'all';
+  const objective = document.getElementById('filter-objective')?.value || 'all';
+  return { month, activity, objective };
+}
+
+function applyFilters(data) {
+  const f = getFilters();
+  return data.filter(r => {
+    if (f.month !== 'all' && r['Month'] !== f.month) return false;
+    if (f.activity !== 'all' && r['Activities'] !== f.activity) return false;
+    if (f.objective !== 'all' && r['Objective'] !== f.objective) return false;
+    return true;
+  });
+}
+
+function num(r, col) { return parseFloat((r[col]||'0').replace(/,/g,'')) || 0; }
+
+function render() {
+  const brandData = allData.filter(r => r['Brand'] === currentBrand);
+  const filtered = applyFilters(brandData);
+  const accentVar = currentBrand === 'Banan' ? '--accent-banan' : '--accent-ttr';
+  const accent = getComputedStyle(document.documentElement).getPropertyValue(accentVar).trim();
+  const cls = currentBrand === 'Banan' ? 'banan' : 'ttr';
+
+  // Aggregates
+  const totalImpressions = filtered.reduce((s,r) => s + num(r,'Impressions'), 0);
+  const totalReach = filtered.reduce((s,r) => s + num(r,'Reach'), 0);
+  const totalSpend = filtered.reduce((s,r) => s + num(r,'Amount spent (VND)'), 0);
+  const totalClicks = filtered.reduce((s,r) => s + num(r,'Link clicks'), 0);
+  const totalResults = filtered.reduce((s,r) => s + num(r,'Results'), 0);
+  const totalConvs = filtered.reduce((s,r) => s + num(r,'Messaging conversations started'), 0);
+  const avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions * 1000) : 0;
+  const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+  // Unique filter options
+  const months = [...new Set(brandData.map(r => r['Month']).filter(Boolean))].sort();
+  const activities = [...new Set(brandData.map(r => r['Activities']).filter(Boolean))].sort();
+  const objectives = [...new Set(brandData.map(r => r['Objective']).filter(Boolean))].sort();
+
+  const savedMonth = document.getElementById('filter-month')?.value || 'all';
+  const savedActivity = document.getElementById('filter-activity')?.value || 'all';
+  const savedObjective = document.getElementById('filter-objective')?.value || 'all';
+
+  // Spend by date (line chart)
+  const dateSpend = {};
+  filtered.forEach(r => {
+    const d = r['Date'];
+    if (d) dateSpend[d] = (dateSpend[d]||0) + num(r,'Amount spent (VND)');
+  });
+  const sortedDates = Object.keys(dateSpend).sort((a,b) => new Date(a)-new Date(b));
+
+  // By Activity (bar chart)
+  const actSpend = {};
+  const actImpressions = {};
+  filtered.forEach(r => {
+    const a = r['Activities'] || 'Other';
+    actSpend[a] = (actSpend[a]||0) + num(r,'Amount spent (VND)');
+    actImpressions[a] = (actImpressions[a]||0) + num(r,'Impressions');
+  });
+
+  // Top creatives table
+  const creativeMap = {};
+  filtered.forEach(r => {
+    const k = r['Creative Name'] || r['Ad name'] || '—';
+    if (!creativeMap[k]) creativeMap[k] = {spend:0, impressions:0, clicks:0, results:0, objective: r['Objective']||'', activity: r['Activities']||''};
+    creativeMap[k].spend += num(r,'Amount spent (VND)');
+    creativeMap[k].impressions += num(r,'Impressions');
+    creativeMap[k].clicks += num(r,'Link clicks');
+    creativeMap[k].results += num(r,'Results');
+  });
+  const topCreatives = Object.entries(creativeMap)
+    .sort((a,b) => b[1].spend - a[1].spend)
+    .slice(0, 12);
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="filter-bar">
+      <span class="filter-label">Lọc:</span>
+      <select id="filter-month" onchange="render()">
+        <option value="all">All months</option>
+        ${months.map(m => `<option value="${m}" ${m===savedMonth?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <select id="filter-activity" onchange="render()">
+        <option value="all">All activities</option>
+        ${activities.map(a => `<option value="${a}" ${a===savedActivity?'selected':''}>${a}</option>`).join('')}
+      </select>
+      <select id="filter-objective" onchange="render()">
+        <option value="all">All objectives</option>
+        ${objectives.map(o => `<option value="${o}" ${o===savedObjective?'selected':''}>${o}</option>`).join('')}
+      </select>
+      <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+        Refresh
+      </button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card ${cls}">
+        <div class="kpi-label">Tổng Impressions</div>
+        <div class="kpi-value">${fmt(totalImpressions)}</div>
+        <div class="kpi-sub">Reach: ${fmt(totalReach)}</div>
+      </div>
+      <div class="kpi-card ${cls}">
+        <div class="kpi-label">Amount Spent</div>
+        <div class="kpi-value">${fmtVND(totalSpend)}</div>
+        <div class="kpi-sub">CPM: ${fmtVND(Math.round(avgCPM))}</div>
+      </div>
+      <div class="kpi-card ${cls}">
+        <div class="kpi-label">Link Clicks</div>
+        <div class="kpi-value">${fmt(totalClicks)}</div>
+        <div class="kpi-sub">CPC: ${avgCPC > 0 ? fmtVND(Math.round(avgCPC)) : '—'}</div>
+      </div>
+      <div class="kpi-card ${cls}">
+        <div class="kpi-label">Results</div>
+        <div class="kpi-value">${fmt(totalResults)}</div>
+        <div class="kpi-sub">Conversations: ${fmt(totalConvs)}</div>
+      </div>
+      <div class="kpi-card ${cls}">
+        <div class="kpi-label">Ads đang chạy</div>
+        <div class="kpi-value">${filtered.length}</div>
+        <div class="kpi-sub">Rows in period</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Spend theo ngày (VND)</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-daily"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Spend theo Activity</div>
+        <div class="chart-wrap" style="height:220px">
+          <canvas id="chart-activity"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Top Creatives — by Spend</div>
+        <div style="font-size:11px;color:var(--muted)">${topCreatives.length} creatives</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Creative</th>
+              <th>Objective</th>
+              <th>Activity</th>
+              <th>Spend</th>
+              <th>Impressions</th>
+              <th>Clicks</th>
+              <th>Results</th>
+              <th>CPR</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${topCreatives.map(([name, d]) => {
+              const cpr = d.results > 0 ? Math.round(d.spend / d.results) : null;
+              const objCls = d.objective === 'Traffic' ? 'badge-traffic' : d.objective === 'CTM' ? 'badge-ctm' : 'badge-other';
+              return `<tr>
+                <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}</td>
+                <td><span class="badge ${objCls}">${d.objective||'—'}</span></td>
+                <td style="color:var(--muted);font-size:11px">${d.activity||'—'}</td>
+                <td class="mono">${fmtVND(d.spend)}</td>
+                <td class="mono">${fmt(d.impressions)}</td>
+                <td class="mono">${fmt(d.clicks)||'—'}</td>
+                <td class="mono">${d.results > 0 ? fmt(d.results) : '—'}</td>
+                <td class="mono">${cpr ? fmtVND(cpr) : '—'}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  // Destroy old charts
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+
+  const gridColor = 'rgba(255,255,255,0.05)';
+  const tickColor = '#7a8494';
+  Chart.defaults.color = tickColor;
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // Daily spend line chart
+  const ctxDaily = document.getElementById('chart-daily');
+  if (ctxDaily && sortedDates.length) {
+    charts.daily = new Chart(ctxDaily, {
+      type: 'line',
+      data: {
+        labels: sortedDates.map(d => {
+          const dt = new Date(d);
+          return dt.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'});
+        }),
+        datasets: [{
+          label: 'Spend (VND)',
+          data: sortedDates.map(d => dateSpend[d]),
+          borderColor: accent,
+          backgroundColor: accent + '18',
+          borderWidth: 2,
+          pointRadius: sortedDates.length > 20 ? 0 : 3,
+          pointBackgroundColor: accent,
+          tension: 0.3,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: '#1a1e24', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          callbacks: { label: ctx => ' ' + fmtVND(Math.round(ctx.raw)) }
+        }},
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { maxRotation: 0, maxTicksLimit: 8 } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmtVND(v) } }
+        }
+      }
+    });
+  }
+
+  // Activity bar chart
+  const ctxAct = document.getElementById('chart-activity');
+  if (ctxAct) {
+    const acts = Object.keys(actSpend);
+    const colors = [accent, '#5b8ef0','#3ecf8e','#f0924a','#c084fc','#f46a6a'];
+    charts.activity = new Chart(ctxAct, {
+      type: 'bar',
+      data: {
+        labels: acts,
+        datasets: [{
+          label: 'Spend',
+          data: acts.map(a => actSpend[a]),
+          backgroundColor: acts.map((_,i) => colors[i % colors.length] + 'cc'),
+          borderColor: acts.map((_,i) => colors[i % colors.length]),
+          borderWidth: 1, borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: {
+          backgroundColor: '#1a1e24', borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1,
+          callbacks: { label: ctx => ' ' + fmtVND(Math.round(ctx.raw)) }
+        }},
+        scales: {
+          x: { grid: { color: 'transparent' }, ticks: { font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmtVND(v) } }
+        }
+      }
+    });
+  }
+}
+
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.classList.add('spinning'); }
+  allData = [];
+  document.getElementById('main-content').innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <span>Đang tải lại dữ liệu…</span>
+    </div>`;
+  loadData().finally(() => {
+    const b = document.getElementById('refresh-btn');
+    if (b) b.classList.remove('spinning');
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
