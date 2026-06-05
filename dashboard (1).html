@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesta Group — Campaign Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0b0d10;
+  --bg2: #111418;
+  --bg3: #181c22;
+  --bg4: #1e232b;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --border3: rgba(255,255,255,0.2);
+  --text: #e4e7ec;
+  --text2: #9aa3b0;
+  --text3: #5c6470;
+  --accent-banan: #f5c842;
+  --accent-ttr: #5b8ef0;
+  --green: #34d399;
+  --red: #f87171;
+  --orange: #fb923c;
+  --purple: #a78bfa;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+header {
+  padding: 0 32px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  position: sticky; top: 0; z-index: 100;
+  backdrop-filter: blur(12px);
+}
+.header-top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 0 14px;
+}
+.brand-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; font-weight: 500; color: var(--text2);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.brand-logo strong { color: var(--text); font-weight: 600; }
+.brand-logo-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent-banan) 0%, var(--orange) 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #000; letter-spacing: 0;
+}
+.header-right { display: flex; align-items: center; gap: 16px; }
+.live-badge {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; color: var(--text3);
+}
+.dot-live {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+  animation: pulse 2.5s ease infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+
+/* TABS */
+.tabs { display: flex; gap: 0; }
+.tab-btn {
+  padding: 12px 24px; font-family: var(--font); font-size: 13px; font-weight: 500;
+  border: none; background: transparent; cursor: pointer;
+  color: var(--text3); border-bottom: 2px solid transparent;
+  transition: all .2s; display: flex; align-items: center; gap: 8px;
+  letter-spacing: 0.01em;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active[data-brand="Banan"] { color: var(--accent-banan); border-bottom-color: var(--accent-banan); }
+.tab-btn.active[data-brand="TTR"] { color: var(--accent-ttr); border-bottom-color: var(--accent-ttr); }
+.tab-dot { width: 7px; height: 7px; border-radius: 50%; }
+.tab-btn[data-brand="Banan"] .tab-dot { background: var(--accent-banan); }
+.tab-btn[data-brand="TTR"] .tab-dot { background: var(--accent-ttr); }
+
+/* ── MAIN ── */
+main { padding: 24px 32px 48px; max-width: 1600px; }
+
+/* SECTION HEADER */
+.section-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.section-label {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.14em;
+}
+.section-rule { flex: 1; height: 1px; background: var(--border); }
+
+/* ── LAYER 1: FILTER BAR ── */
+.filter-bar {
+  display: flex; gap: 8px; margin-bottom: 28px; align-items: center; flex-wrap: wrap;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px;
+}
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label { font-size: 11px; color: var(--text3); font-weight: 500; letter-spacing: 0.06em; }
+select {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+  font-family: var(--font); font-size: 12px; padding: 5px 10px;
+  border-radius: var(--radius-sm); cursor: pointer; outline: none;
+  transition: border-color .2s;
+  -webkit-appearance: none; appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%235c6470' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 8px center;
+}
+select:hover, select:focus { border-color: var(--border3); }
+
+/* Date range */
+.date-range-group { display: flex; align-items: center; gap: 6px; }
+input[type="date"] {
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+  font-family: var(--mono); font-size: 11px; padding: 5px 10px;
+  border-radius: var(--radius-sm); cursor: pointer; outline: none;
+  transition: border-color .2s; color-scheme: dark;
+}
+input[type="date"]:hover, input[type="date"]:focus { border-color: var(--border3); }
+.date-sep { font-size: 11px; color: var(--text3); }
+
+.filter-divider { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.filter-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border2); color: var(--text2);
+  font-family: var(--font); font-size: 11px; font-weight: 500;
+  padding: 5px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  transition: all .2s; display: flex; align-items: center; gap: 5px;
+  letter-spacing: 0.03em;
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border3); background: var(--bg3); }
+.btn-ghost svg { transition: transform .4s; }
+.btn-ghost.spinning svg { animation: spin .6s linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.btn-primary {
+  background: var(--accent-banan); border: none; color: #000;
+  font-family: var(--font); font-size: 11px; font-weight: 600;
+  padding: 5px 14px; border-radius: var(--radius-sm); cursor: pointer;
+  transition: all .2s; letter-spacing: 0.03em;
+}
+.btn-primary:hover { opacity: .85; }
+.btn-primary.ttr-accent { background: var(--accent-ttr); color: #fff; }
+
+/* ── LAYER 2: KPI CARDS ── */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 12px; margin-bottom: 28px;
+}
+.kpi-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+  position: relative; overflow: hidden;
+  transition: border-color .25s, transform .2s;
+  cursor: default;
+}
+.kpi-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+.kpi-accent-bar {
+  position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: var(--radius) var(--radius) 0 0;
+}
+.kpi-label {
+  font-size: 11px; color: var(--text3); text-transform: uppercase;
+  letter-spacing: 0.1em; font-weight: 600; margin-bottom: 10px;
+}
+.kpi-value { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 10px; }
+.kpi-footer { display: flex; align-items: center; justify-content: space-between; }
+.kpi-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.kpi-delta {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; font-family: var(--mono);
+  padding: 2px 8px; border-radius: 4px;
+}
+.kpi-delta.up { color: var(--green); background: rgba(52,211,153,.12); }
+.kpi-delta.down { color: var(--red); background: rgba(248,113,113,.12); }
+.kpi-delta.neutral { color: var(--text3); background: var(--bg3); }
+
+/* ── LAYER 3: CHARTS ── */
+.charts-grid {
+  display: grid; grid-template-columns: 1.8fr 1fr;
+  gap: 14px; margin-bottom: 14px;
+}
+.charts-grid-2 {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 14px; margin-bottom: 28px;
+}
+.chart-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+}
+.chart-card-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.chart-card-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.09em; }
+.chart-card-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); margin-top: 3px; }
+.chart-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+.legend-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.chart-wrap { position: relative; }
+
+/* ── LAYER 4: DEEP DIVE ── */
+.deepdive-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 14px; margin-bottom: 28px;
+}
+.deepdive-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.deepdive-header {
+  padding: 16px 20px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.deepdive-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.09em; }
+.deepdive-tabs { display: flex; gap: 4px; }
+.dd-tab {
+  font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 4px;
+  cursor: pointer; transition: all .2s; letter-spacing: 0.05em;
+  border: 1px solid var(--border2); color: var(--text3); background: transparent;
+  font-family: var(--font);
+}
+.dd-tab.active { background: var(--bg4); border-color: var(--border3); color: var(--text); }
+.deepdive-body { padding: 16px 20px; }
+.perf-row {
+  display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.perf-row:last-child { border-bottom: none; }
+.perf-rank { font-size: 10px; color: var(--text3); font-family: var(--mono); width: 16px; flex-shrink: 0; }
+.perf-name { font-size: 12px; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.perf-bar-wrap { width: 80px; height: 4px; background: var(--bg3); border-radius: 2px; flex-shrink: 0; }
+.perf-bar { height: 4px; border-radius: 2px; transition: width .6s ease; }
+.perf-value { font-size: 11px; font-family: var(--mono); color: var(--text2); width: 64px; text-align: right; flex-shrink: 0; }
+.perf-delta { font-size: 10px; font-family: var(--mono); font-weight: 600; width: 48px; text-align: right; flex-shrink: 0; }
+
+/* ── LAYER 5: TOP CREATIVE TABLE ── */
+.table-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 28px;
+}
+.table-header {
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.table-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.09em; }
+.table-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.table-sort-btns { display: flex; gap: 4px; }
+.sort-btn {
+  font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 4px;
+  cursor: pointer; transition: all .2s; letter-spacing: 0.04em;
+  border: 1px solid var(--border); color: var(--text3); background: transparent;
+  font-family: var(--font);
+}
+.sort-btn.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  font-size: 10px; color: var(--text3); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.09em;
+  padding: 9px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+th:hover { color: var(--text2); }
+th.sort-asc::after { content: ' ↑'; }
+th.sort-desc::after { content: ' ↓'; }
+td {
+  padding: 9px 14px; font-size: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text); white-space: nowrap;
+  transition: background .1s;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,0.025); }
+td.mono { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+td.muted { color: var(--text3); font-size: 11px; }
+.badge {
+  display: inline-block; font-size: 10px; padding: 2px 8px;
+  border-radius: 4px; font-weight: 600; font-family: var(--mono); letter-spacing: 0.04em;
+}
+.badge-traffic { background: rgba(91,142,240,.15); color: #7ba7f5; }
+.badge-ctm { background: rgba(245,200,66,.15); color: #f5c842; }
+.badge-awareness { background: rgba(167,139,250,.15); color: #a78bfa; }
+.badge-other { background: rgba(255,255,255,.06); color: var(--text3); }
+.efficiency-score {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-family: var(--mono); font-weight: 600;
+}
+.score-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+/* ── LAYER 6: AI OBSERVATION ── */
+.ai-section {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 28px;
+}
+.ai-section-header {
+  padding: 16px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.ai-title-wrap { display: flex; align-items: center; gap: 10px; }
+.ai-icon {
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, rgba(91,142,240,.3) 0%, rgba(167,139,250,.3) 100%);
+  border: 1px solid rgba(91,142,240,.3);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.ai-icon svg { opacity: .8; }
+.ai-title { font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.09em; }
+.ai-subtitle { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.ai-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text3); font-family: var(--mono);
+}
+.ai-body { padding: 20px 22px; }
+.ai-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px; gap: 12px; text-align: center;
+}
+.ai-placeholder-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+}
+.ai-placeholder p { font-size: 13px; color: var(--text2); }
+.ai-placeholder small { font-size: 11px; color: var(--text3); }
+.ai-insights-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.ai-insight-card {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+  position: relative; overflow: hidden;
+}
+.ai-insight-card::before {
+  content: ''; position: absolute; top: 0; left: 0; width: 3px; bottom: 0; border-radius: 6px 0 0 6px;
+}
+.ai-insight-card.media::before { background: var(--accent-ttr); }
+.ai-insight-card.format::before { background: var(--green); }
+.ai-insight-card.creative::before { background: var(--purple); }
+.ai-insight-type {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  margin-bottom: 8px; font-family: var(--mono);
+}
+.ai-insight-card.media .ai-insight-type { color: var(--accent-ttr); }
+.ai-insight-card.format .ai-insight-type { color: var(--green); }
+.ai-insight-card.creative .ai-insight-type { color: var(--purple); }
+.ai-insight-text { font-size: 12px; color: var(--text); line-height: 1.6; }
+.ai-recommendation {
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text2); line-height: 1.5;
+}
+.ai-recommendation strong { color: var(--text); font-weight: 600; }
+.ai-loading {
+  display: flex; align-items: center; gap: 10px;
+  padding: 20px; font-size: 12px; color: var(--text3);
+}
+.ai-spinner {
+  width: 16px; height: 16px; border: 1.5px solid var(--border2);
+  border-top-color: var(--accent-ttr); border-radius: 50%;
+  animation: spin .8s linear infinite; flex-shrink: 0;
+}
+.typing-dots { display: inline-flex; gap: 3px; }
+.typing-dots span {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--text3);
+  animation: typing 1.2s ease infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: .2s; }
+.typing-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes typing { 0%,60%,100%{opacity:.3;transform:scale(.8)} 30%{opacity:1;transform:scale(1)} }
+
+/* Loading / Error */
+.loading-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 80px 32px; gap: 16px; color: var(--text2);
+}
+.spinner {
+  width: 28px; height: 28px; border: 2px solid var(--border);
+  border-top-color: var(--accent-banan); border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.error-state {
+  background: rgba(248,113,113,.06); border: 1px solid rgba(248,113,113,.2);
+  border-radius: var(--radius); padding: 24px; text-align: center; color: var(--red);
+}
+.error-state p { margin-top: 6px; font-size: 12px; color: var(--text3); }
+
+/* TOOLTIP */
+.kpi-tooltip-wrap { position: relative; }
+.kpi-tooltip-wrap:hover .kpi-tooltip { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.kpi-tooltip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%) translateY(4px);
+  background: var(--bg4); border: 1px solid var(--border2); border-radius: 6px;
+  padding: 8px 12px; font-size: 11px; color: var(--text2); white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: all .2s; z-index: 50;
+  font-family: var(--mono);
+}
+
+@media (max-width: 1024px) {
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid { grid-template-columns: 1fr; }
+  .deepdive-grid { grid-template-columns: 1fr; }
+  .ai-insights-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  header { padding: 0 16px; }
+  main { padding: 16px 16px 48px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .charts-grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-top">
+    <div class="brand-logo">
+      <div class="brand-logo-icon">VG</div>
+      <div>
+        <strong>Vesta Group</strong> <span>/ Campaign Dashboard '26</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge">
+        <div class="dot-live"></div>
+        <span id="update-time">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-brand="Banan" onclick="switchBrand('Banan',this)">
+      <span class="tab-dot"></span> Banan
+    </button>
+    <button class="tab-btn" data-brand="TTR" onclick="switchBrand('TTR',this)">
+      <span class="tab-dot"></span> TTR
+    </button>
+  </div>
+</header>
+
+<main id="main-content">
+  <div class="loading-state" id="loading">
+    <div class="spinner"></div>
+    <span>Đang tải dữ liệu từ Google Sheets…</span>
+  </div>
+</main>
+
+<script>
+const SHEET_ID = '1wqArly1SMp4ahfnccMT1nKYal9A_VDg-DsIF8gRBkLA';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1`;
+
+let allData = [];
+let currentBrand = 'Banan';
+let charts = {};
+let sortCol = 'spend';
+let sortDir = -1;
+let ddTab = { visit: 'format', conv: 'format' };
+
+// ── CSV Parsing ──
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseCSVLine(line);
+    const row = {};
+    headers.forEach((h, i) => row[h.trim()] = (vals[i] || '').trim());
+    return row;
+  });
+}
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur); return result;
+}
+
+// ── Formatters ──
+function fmt(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K';
+  return Math.round(n).toLocaleString();
+}
+function fmtVND(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(2) + 'B ₫';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M ₫';
+  if (n >= 1e3) return (n/1e3).toFixed(0) + 'K ₫';
+  return Math.round(n).toLocaleString() + ' ₫';
+}
+function fmtDelta(pct) {
+  if (pct === null || isNaN(pct)) return `<span class="kpi-delta neutral">—</span>`;
+  const sign = pct >= 0 ? '+' : '';
+  const cls = pct >= 0 ? 'up' : 'down';
+  const arrow = pct >= 0 ? '↑' : '↓';
+  return `<span class="kpi-delta ${cls}">${arrow} ${sign}${pct.toFixed(1)}%</span>`;
+}
+function num(r, col) { return parseFloat((r[col]||'0').replace(/,/g,'')) || 0; }
+
+// ── Delta vs previous period ──
+function computeDelta(current, prev) {
+  if (!prev || prev === 0) return null;
+  return ((current - prev) / prev) * 100;
+}
+
+// ── Load data ──
+async function loadData() {
+  try {
+    const res = await fetch(CSV_URL + '&_=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    allData = parseCSV(text).filter(r => r['Brand'] && r['Date']);
+    document.getElementById('update-time').textContent = 'Updated ' + new Date().toLocaleTimeString('vi-VN');
+    render();
+  } catch(e) {
+    document.getElementById('main-content').innerHTML = `
+      <div class="error-state">
+        <strong>Không tải được dữ liệu</strong>
+        <p>Kiểm tra lại quyền chia sẻ Google Sheet hoặc kết nối mạng.<br><small>${e.message}</small></p>
+      </div>`;
+  }
+}
+
+function switchBrand(brand, btn) {
+  currentBrand = brand;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ── Filter helpers ──
+function getFilters() {
+  return {
+    month: document.getElementById('filter-month')?.value || 'all',
+    activity: document.getElementById('filter-activity')?.value || 'all',
+    objective: document.getElementById('filter-objective')?.value || 'all',
+    dateFrom: document.getElementById('filter-date-from')?.value || '',
+    dateTo: document.getElementById('filter-date-to')?.value || '',
+  };
+}
+
+function applyFilters(data) {
+  const f = getFilters();
+  return data.filter(r => {
+    if (f.month !== 'all' && r['Month'] !== f.month) return false;
+    if (f.activity !== 'all' && r['Activities'] !== f.activity) return false;
+    if (f.objective !== 'all' && r['Objective'] !== f.objective) return false;
+    if (f.dateFrom && r['Date'] < f.dateFrom) return false;
+    if (f.dateTo && r['Date'] > f.dateTo) return false;
+    return true;
+  });
+}
+
+function aggregate(rows) {
+  const impressions = rows.reduce((s,r) => s + num(r,'Impressions'), 0);
+  const reach = rows.reduce((s,r) => s + num(r,'Reach'), 0);
+  const spend = rows.reduce((s,r) => s + num(r,'Amount spent (VND)'), 0);
+  const clicks = rows.reduce((s,r) => s + num(r,'Link clicks'), 0);
+  const results = rows.reduce((s,r) => s + num(r,'Results'), 0);
+  const convs = rows.reduce((s,r) => s + num(r,'Messaging conversations started'), 0);
+  const igVisit = rows.reduce((s,r) => s + num(r,'Instagram profile visits'), 0);
+  const cpm = impressions > 0 ? spend / impressions * 1000 : 0;
+  const cpc = clicks > 0 ? spend / clicks : 0;
+  const cpr = results > 0 ? spend / results : 0;
+  const cpConv = convs > 0 ? spend / convs : 0;
+  return { impressions, reach, spend, clicks, results, convs, igVisit, cpm, cpc, cpr, cpConv };
+}
+
+// ── Score calculation for creative efficiency ──
+function efficiencyScore(d) {
+  if (!d.spend) return 0;
+  const cpmNorm = d.impressions > 0 ? Math.min(1, 50000 / (d.spend / d.impressions * 1000)) : 0;
+  const ctrNorm = d.impressions > 0 ? Math.min(1, (d.clicks / d.impressions) * 200) : 0;
+  const convNorm = d.spend > 0 ? Math.min(1, (d.results / d.spend) * 5000000) : 0;
+  const score = Math.round((cpmNorm * 0.3 + ctrNorm * 0.4 + convNorm * 0.3) * 100);
+  return score;
+}
+function scoreBadge(score) {
+  if (score >= 70) return `<span class="efficiency-score"><span class="score-dot" style="background:#34d399"></span>${score}</span>`;
+  if (score >= 40) return `<span class="efficiency-score"><span class="score-dot" style="background:#fb923c"></span>${score}</span>`;
+  return `<span class="efficiency-score"><span class="score-dot" style="background:#f87171"></span>${score}</span>`;
+}
+
+// ── Deep dive by format/creative ──
+function getDeepDiveRows(data, metric, groupBy) {
+  const map = {};
+  data.forEach(r => {
+    const key = r[groupBy] || 'Unknown';
+    if (!map[key]) map[key] = { spend: 0, impressions: 0, clicks: 0, results: 0, convs: 0, igVisit: 0 };
+    map[key].spend += num(r, 'Amount spent (VND)');
+    map[key].impressions += num(r, 'Impressions');
+    map[key].clicks += num(r, 'Link clicks');
+    map[key].results += num(r, 'Results');
+    map[key].convs += num(r, 'Messaging conversations started');
+    map[key].igVisit += num(r, 'Instagram profile visits');
+  });
+  const entries = Object.entries(map).filter(([,v]) => v.spend > 0);
+  const getValue = (v) => {
+    switch(metric) {
+      case 'igVisit': return v.igVisit;
+      case 'conv': return v.convs;
+      case 'cpi': return v.igVisit > 0 ? v.spend / v.igVisit : Infinity;
+      case 'cpc': return v.clicks > 0 ? v.spend / v.clicks : Infinity;
+      case 'spend': return v.spend;
+      default: return v.spend;
+    }
+  };
+  const isLowerBetter = metric === 'cpi' || metric === 'cpc';
+  const sorted = entries.sort((a,b) => isLowerBetter ? getValue(a[1]) - getValue(b[1]) : getValue(b[1]) - getValue(a[1]));
+  const top = sorted.slice(0, 6);
+  const maxVal = top.length ? getValue(top[0][1]) : 1;
+  return top.map(([name, v], i) => {
+    const val = getValue(v);
+    const barWidth = isLowerBetter ? (val === 0 ? 0 : Math.max(10, (1 - (val - getValue(top[top.length-1][1])) / (maxVal - getValue(top[top.length-1][1]) + 1)) * 100)) : (maxVal > 0 ? Math.round(val / maxVal * 100) : 0);
+    const display = (metric === 'cpi' || metric === 'cpc') ? fmtVND(Math.round(val)) : fmt(val);
+    return { rank: i+1, name, val, barWidth, display };
+  });
+}
+
+// ── Render ──
+function render() {
+  const brandData = allData.filter(r => r['Brand'] === currentBrand);
+  const filtered = applyFilters(brandData);
+  const accent = currentBrand === 'Banan' ? getComputedStyle(document.documentElement).getPropertyValue('--accent-banan').trim() : getComputedStyle(document.documentElement).getPropertyValue('--accent-ttr').trim();
+  const accentClass = currentBrand === 'Banan' ? 'banan' : 'ttr';
+  const isPrimaryBanan = currentBrand === 'Banan';
+
+  // Filter options
+  const months = [...new Set(brandData.map(r => r['Month']).filter(Boolean))].sort();
+  const activities = [...new Set(brandData.map(r => r['Activities']).filter(Boolean))].sort();
+  const objectives = [...new Set(brandData.map(r => r['Objective']).filter(Boolean))].sort();
+  const saved = getFilters();
+
+  // Date range from data
+  const dates = brandData.map(r => r['Date']).filter(Boolean).sort();
+  const minDate = dates[0] || '';
+  const maxDate = dates[dates.length - 1] || '';
+
+  // Aggregates
+  const agg = aggregate(filtered);
+
+  // Previous period for delta (same length of time, before the current filtered range)
+  const filteredDates = filtered.map(r => r['Date']).filter(Boolean).sort();
+  const nDays = filteredDates.length ? Math.max(1, Math.ceil((new Date(filteredDates[filteredDates.length-1]) - new Date(filteredDates[0])) / 86400000) + 1) : 30;
+  const currentFrom = filteredDates[0] ? new Date(filteredDates[0]) : null;
+  const prevTo = currentFrom ? new Date(currentFrom.getTime() - 86400000) : null;
+  const prevFrom = prevTo ? new Date(prevTo.getTime() - nDays * 86400000) : null;
+  const prevData = currentFrom ? brandData.filter(r => {
+    if (!r['Date']) return false;
+    const d = new Date(r['Date']);
+    return d >= prevFrom && d <= prevTo;
+  }) : [];
+  const prevAgg = aggregate(prevData);
+
+  // Spend by date
+  const dateSpend = {};
+  filtered.forEach(r => {
+    if (r['Date']) dateSpend[r['Date']] = (dateSpend[r['Date']]||0) + num(r,'Amount spent (VND)');
+  });
+  const sortedDates = Object.keys(dateSpend).sort((a,b) => new Date(a)-new Date(b));
+
+  // By activity
+  const actSpend = {};
+  filtered.forEach(r => {
+    const a = r['Activities'] || 'Other';
+    actSpend[a] = (actSpend[a]||0) + num(r,'Amount spent (VND)');
+  });
+
+  // IG visit & conv trends
+  const dateIGVisit = {}, dateConv = {};
+  filtered.forEach(r => {
+    if (!r['Date']) return;
+    dateIGVisit[r['Date']] = (dateIGVisit[r['Date']]||0) + num(r,'Instagram profile visits');
+    dateConv[r['Date']] = (dateConv[r['Date']]||0) + num(r,'Messaging conversations started');
+  });
+
+  // Creative map
+  const creativeMap = {};
+  filtered.forEach(r => {
+    const k = r['Creative Name'] || r['Ad name'] || '—';
+    if (!creativeMap[k]) creativeMap[k] = { spend:0, impressions:0, clicks:0, results:0, convs:0, igVisit:0, objective: r['Objective']||'', activity: r['Activities']||'', format: r['Format']||'' };
+    creativeMap[k].spend += num(r,'Amount spent (VND)');
+    creativeMap[k].impressions += num(r,'Impressions');
+    creativeMap[k].clicks += num(r,'Link clicks');
+    creativeMap[k].results += num(r,'Results');
+    creativeMap[k].convs += num(r,'Messaging conversations started');
+    creativeMap[k].igVisit += num(r,'Instagram profile visits');
+  });
+
+  // Sort
+  const sortFns = {
+    spend: (a,b) => sortDir * (b[1].spend - a[1].spend),
+    impressions: (a,b) => sortDir * (b[1].impressions - a[1].impressions),
+    clicks: (a,b) => sortDir * (b[1].clicks - a[1].clicks),
+    results: (a,b) => sortDir * (b[1].results - a[1].results),
+    cpr: (a,b) => {
+      const ca = a[1].results > 0 ? a[1].spend/a[1].results : Infinity;
+      const cb = b[1].results > 0 ? b[1].spend/b[1].results : Infinity;
+      return sortDir * (ca - cb);
+    },
+    score: (a,b) => sortDir * (efficiencyScore(b[1]) - efficiencyScore(a[1])),
+  };
+  const sortedCreatives = Object.entries(creativeMap).sort(sortFns[sortCol] || sortFns.spend).slice(0, 15);
+
+  // Deep dive data
+  const ddVisitFormat = getDeepDiveRows(filtered, 'igVisit', 'Format');
+  const ddVisitCreative = getDeepDiveRows(filtered, 'igVisit', 'Creative Name');
+  const ddConvFormat = getDeepDiveRows(filtered, 'conv', 'Format');
+  const ddConvCreative = getDeepDiveRows(filtered, 'conv', 'Creative Name');
+
+  function renderDDRows(rows, color) {
+    if (!rows.length) return `<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Không có dữ liệu</div>`;
+    return rows.map(r => `
+      <div class="perf-row">
+        <span class="perf-rank">${r.rank}</span>
+        <span class="perf-name" title="${r.name}">${r.name}</span>
+        <div class="perf-bar-wrap"><div class="perf-bar" style="width:${r.barWidth}%;background:${color}"></div></div>
+        <span class="perf-value">${r.display}</span>
+      </div>`).join('');
+  }
+
+  function badgeClass(obj) {
+    if (!obj) return 'badge-other';
+    const o = obj.toLowerCase();
+    if (o.includes('traffic')) return 'badge-traffic';
+    if (o.includes('ctm') || o.includes('message')) return 'badge-ctm';
+    if (o.includes('aware')) return 'badge-awareness';
+    return 'badge-other';
+  }
+
+  function sortThClass(col) {
+    if (col !== sortCol) return '';
+    return sortDir === -1 ? 'sort-desc' : 'sort-asc';
+  }
+
+  // Table rows
+  const tableRows = sortedCreatives.map(([name, d]) => {
+    const cpr = d.results > 0 ? Math.round(d.spend / d.results) : null;
+    const score = efficiencyScore(d);
+    return `<tr>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" title="${name}">${name}</td>
+      <td><span class="badge ${badgeClass(d.objective)}">${d.objective||'—'}</span></td>
+      <td class="muted">${d.activity||'—'}</td>
+      <td class="muted">${d.format||'—'}</td>
+      <td class="mono">${fmtVND(d.spend)}</td>
+      <td class="mono">${fmt(d.impressions)}</td>
+      <td class="mono">${d.clicks > 0 ? fmt(d.clicks) : '—'}</td>
+      <td class="mono">${d.results > 0 ? fmt(d.results) : '—'}</td>
+      <td class="mono">${cpr ? fmtVND(cpr) : '—'}</td>
+      <td>${scoreBadge(score)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('main-content').innerHTML = `
+
+    <!-- LAYER 1: FILTER BAR -->
+    <div class="filter-bar">
+      <span class="filter-label">LỌC</span>
+      <div class="filter-group">
+        <select id="filter-month" onchange="render()">
+          <option value="all">All months</option>
+          ${months.map(m => `<option value="${m}" ${m===saved.month?'selected':''}>${m}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filter-group">
+        <select id="filter-activity" onchange="render()">
+          <option value="all">All activities</option>
+          ${activities.map(a => `<option value="${a}" ${a===saved.activity?'selected':''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filter-group">
+        <select id="filter-objective" onchange="render()">
+          <option value="all">All objectives</option>
+          ${objectives.map(o => `<option value="${o}" ${o===saved.objective?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="date-range-group">
+        <input type="date" id="filter-date-from" value="${saved.dateFrom}" min="${minDate}" max="${maxDate}" onchange="render()" title="Từ ngày">
+        <span class="date-sep">→</span>
+        <input type="date" id="filter-date-to" value="${saved.dateTo}" min="${minDate}" max="${maxDate}" onchange="render()" title="Đến ngày">
+        ${(saved.dateFrom || saved.dateTo) ? `<button class="btn-ghost" onclick="clearDates()" style="padding:4px 8px;font-size:10px">✕ Xóa</button>` : ''}
+      </div>
+      <div class="filter-right">
+        <button class="btn-ghost" id="refresh-btn" onclick="refreshData()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- LAYER 2: KPI CARDS -->
+    <div class="section-header"><span class="section-label">Tổng quan</span><div class="section-rule"></div></div>
+    <div class="kpi-grid" style="margin-bottom:28px">
+
+      <div class="kpi-card">
+        <div class="kpi-accent-bar" style="background:${accent}"></div>
+        <div class="kpi-label">Amount Spend</div>
+        <div class="kpi-value">${fmtVND(agg.spend)}</div>
+        <div class="kpi-footer">
+          <span class="kpi-sub">CPM ${fmtVND(Math.round(agg.cpm))}</span>
+          ${fmtDelta(computeDelta(agg.spend, prevAgg.spend))}
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-accent-bar" style="background:${accent}"></div>
+        <div class="kpi-label">Total Impressions</div>
+        <div class="kpi-value">${fmt(agg.impressions)}</div>
+        <div class="kpi-footer">
+          <span class="kpi-sub">Reach ${fmt(agg.reach)}</span>
+          ${fmtDelta(computeDelta(agg.impressions, prevAgg.impressions))}
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-accent-bar" style="background:${accent}"></div>
+        <div class="kpi-label">IG Visit Profile</div>
+        <div class="kpi-value">${fmt(agg.igVisit)}</div>
+        <div class="kpi-footer">
+          <span class="kpi-sub">Cost/Visit ${agg.igVisit > 0 ? fmtVND(Math.round(agg.spend/agg.igVisit)) : '—'}</span>
+          ${fmtDelta(computeDelta(agg.igVisit, prevAgg.igVisit))}
+        </div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-accent-bar" style="background:${accent}"></div>
+        <div class="kpi-label">Conversation</div>
+        <div class="kpi-value">${fmt(agg.convs)}</div>
+        <div class="kpi-footer">
+          <span class="kpi-sub">Cost/Conv ${agg.convs > 0 ? fmtVND(Math.round(agg.cpConv)) : '—'}</span>
+          ${fmtDelta(computeDelta(agg.convs, prevAgg.convs))}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LAYER 3a: SPEND CHARTS -->
+    <div class="section-header"><span class="section-label">Spend trends</span><div class="section-rule"></div></div>
+    <div class="charts-grid" style="margin-bottom:14px">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="chart-card-title">Spend by day</div>
+            <div class="chart-card-sub">VND · ${sortedDates.length} ngày</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chart-daily"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="chart-card-title">Spend by activity</div>
+            <div class="chart-card-sub">${Object.keys(actSpend).length} activities</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:200px">
+          <canvas id="chart-activity"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYER 3b: TREND CHARTS -->
+    <div class="charts-grid-2" style="margin-bottom:28px">
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="chart-card-title">IG Visit Profile — trend</div>
+            <div class="chart-card-sub">Profile visits by day</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>IG Visit</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:160px">
+          <canvas id="chart-igvisit"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-header">
+          <div>
+            <div class="chart-card-title">Conversation — trend</div>
+            <div class="chart-card-sub">Conversations started by day</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>Conv</div>
+          </div>
+        </div>
+        <div class="chart-wrap" style="height:160px">
+          <canvas id="chart-conv"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- LAYER 4: DEEP DIVE -->
+    <div class="section-header"><span class="section-label">Deep dive performance</span><div class="section-rule"></div></div>
+    <div class="deepdive-grid">
+
+      <div class="deepdive-card">
+        <div class="deepdive-header">
+          <div>
+            <div class="deepdive-title">IG Visit Profile</div>
+          </div>
+          <div class="deepdive-tabs">
+            <button class="dd-tab ${ddTab.visit==='format'?'active':''}" onclick="setDDTab('visit','format')">Format</button>
+            <button class="dd-tab ${ddTab.visit==='creative'?'active':''}" onclick="setDDTab('visit','creative')">Creative</button>
+          </div>
+        </div>
+        <div class="deepdive-body" id="dd-visit-body">
+          ${renderDDRows(ddTab.visit==='format' ? ddVisitFormat : ddVisitCreative, 'var(--green)')}
+        </div>
+      </div>
+
+      <div class="deepdive-card">
+        <div class="deepdive-header">
+          <div>
+            <div class="deepdive-title">Conversation</div>
+          </div>
+          <div class="deepdive-tabs">
+            <button class="dd-tab ${ddTab.conv==='format'?'active':''}" onclick="setDDTab('conv','format')">Format</button>
+            <button class="dd-tab ${ddTab.conv==='creative'?'active':''}" onclick="setDDTab('conv','creative')">Creative</button>
+          </div>
+        </div>
+        <div class="deepdive-body" id="dd-conv-body">
+          ${renderDDRows(ddTab.conv==='format' ? ddConvFormat : ddConvCreative, 'var(--purple)')}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LAYER 5: TOP CREATIVE TABLE -->
+    <div class="section-header"><span class="section-label">Top creatives</span><div class="section-rule"></div></div>
+    <div class="table-card">
+      <div class="table-header">
+        <div>
+          <div class="table-title">Top creative — by spend</div>
+        </div>
+        <div class="table-meta">${sortedCreatives.length} creatives</div>
+        <div class="table-sort-btns">
+          <button class="sort-btn ${sortCol==='spend'?'active':''}" onclick="setSort('spend')">Spend</button>
+          <button class="sort-btn ${sortCol==='results'?'active':''}" onclick="setSort('results')">Results</button>
+          <button class="sort-btn ${sortCol==='score'?'active':''}" onclick="setSort('score')">Score</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="setSort('spend')" class="${sortThClass('spend')}">Creative</th>
+              <th>Objective</th>
+              <th>Activity</th>
+              <th>Format</th>
+              <th onclick="setSort('spend')" class="${sortThClass('spend')}">Spend</th>
+              <th onclick="setSort('impressions')" class="${sortThClass('impressions')}">Impressions</th>
+              <th onclick="setSort('clicks')" class="${sortThClass('clicks')}">Clicks</th>
+              <th onclick="setSort('results')" class="${sortThClass('results')}">Results</th>
+              <th onclick="setSort('cpr')" class="${sortThClass('cpr')}">CPR</th>
+              <th onclick="setSort('score')" class="${sortThClass('score')}">Score</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LAYER 6: AI OBSERVATION (placeholder — Step 2) -->
+    <div class="section-header"><span class="section-label">AI Observation</span><div class="section-rule"></div></div>
+    <div class="ai-section">
+      <div class="ai-section-header">
+        <div class="ai-title-wrap">
+          <div class="ai-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7ba7f5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a5 5 0 0 1 5 5v3a5 5 0 0 1-10 0V7a5 5 0 0 1 5-5z"/><path d="M15 17h.5a4.5 4.5 0 0 1 0 9H8.5a4.5 4.5 0 0 1 0-9H9"/></svg>
+          </div>
+          <div>
+            <div class="ai-title">AI-generated insights</div>
+            <div class="ai-subtitle">Powered by Claude — media · format · creative analysis</div>
+          </div>
+        </div>
+        <div class="ai-status" id="ai-status">
+          <span id="ai-status-text">Chưa kết nối</span>
+        </div>
+      </div>
+      <div class="ai-body" id="ai-body">
+        <div class="ai-placeholder">
+          <div class="ai-placeholder-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+          </div>
+          <p>AI observation sẽ xuất hiện ở đây</p>
+          <small>Bước 2: Kết nối Cloudflare Worker + Claude API để generate insights realtime</small>
+        </div>
+      </div>
+    </div>
+
+  `;
+
+  // ── Charts ──
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+
+  const gridColor = 'rgba(255,255,255,0.04)';
+  const tickColor = '#5c6470';
+  Chart.defaults.color = tickColor;
+  Chart.defaults.font.family = "'DM Sans', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  const tooltipDefaults = {
+    backgroundColor: '#1e232b',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    padding: 10,
+    titleFont: { size: 11 },
+    bodyFont: { size: 11 },
+  };
+
+  // Daily spend
+  const ctxDaily = document.getElementById('chart-daily');
+  if (ctxDaily && sortedDates.length) {
+    charts.daily = new Chart(ctxDaily, {
+      type: 'line',
+      data: {
+        labels: sortedDates.map(d => {
+          const dt = new Date(d);
+          return dt.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'});
+        }),
+        datasets: [{
+          label: 'Spend',
+          data: sortedDates.map(d => dateSpend[d]),
+          borderColor: accent,
+          backgroundColor: accent + '14',
+          borderWidth: 2,
+          pointRadius: sortedDates.length > 25 ? 0 : 3,
+          pointBackgroundColor: accent,
+          pointBorderWidth: 0,
+          tension: 0.4,
+          fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipDefaults, callbacks: { label: ctx => ' ' + fmtVND(Math.round(ctx.raw)) } }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { maxRotation: 0, maxTicksLimit: 8 } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmtVND(v) } }
+        }
+      }
+    });
+  }
+
+  // Activity bar
+  const ctxAct = document.getElementById('chart-activity');
+  if (ctxAct && Object.keys(actSpend).length) {
+    const acts = Object.keys(actSpend).sort((a,b) => actSpend[b] - actSpend[a]);
+    const colors = [accent, '#34d399', '#a78bfa', '#fb923c', '#f87171', '#5b8ef0'];
+    charts.activity = new Chart(ctxAct, {
+      type: 'bar',
+      data: {
+        labels: acts,
+        datasets: [{
+          data: acts.map(a => actSpend[a]),
+          backgroundColor: acts.map((_,i) => colors[i % colors.length] + 'bb'),
+          borderColor: acts.map((_,i) => colors[i % colors.length]),
+          borderWidth: 1, borderRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, indexAxis: 'x',
+        plugins: {
+          legend: { display: false },
+          tooltip: { ...tooltipDefaults, callbacks: { label: ctx => ' ' + fmtVND(Math.round(ctx.raw)) } }
+        },
+        scales: {
+          x: { grid: { color: 'transparent' }, ticks: { font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmtVND(v) } }
+        }
+      }
+    });
+  }
+
+  // IG Visit trend
+  const ctxIG = document.getElementById('chart-igvisit');
+  if (ctxIG) {
+    const igDates = sortedDates.filter(d => dateIGVisit[d] !== undefined);
+    charts.igvisit = new Chart(ctxIG, {
+      type: 'line',
+      data: {
+        labels: sortedDates.map(d => { const dt = new Date(d); return dt.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'}); }),
+        datasets: [{
+          data: sortedDates.map(d => dateIGVisit[d] || 0),
+          borderColor: '#34d399',
+          backgroundColor: '#34d39914',
+          borderWidth: 2,
+          pointRadius: sortedDates.length > 25 ? 0 : 3,
+          pointBackgroundColor: '#34d399',
+          pointBorderWidth: 0,
+          tension: 0.4, fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults, callbacks: { label: ctx => ' ' + fmt(Math.round(ctx.raw)) + ' visits' } } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { maxRotation: 0, maxTicksLimit: 7, font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmt(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // Conv trend
+  const ctxConv = document.getElementById('chart-conv');
+  if (ctxConv) {
+    charts.conv = new Chart(ctxConv, {
+      type: 'line',
+      data: {
+        labels: sortedDates.map(d => { const dt = new Date(d); return dt.toLocaleDateString('vi-VN', {day:'2-digit',month:'2-digit'}); }),
+        datasets: [{
+          data: sortedDates.map(d => dateConv[d] || 0),
+          borderColor: '#a78bfa',
+          backgroundColor: '#a78bfa14',
+          borderWidth: 2,
+          pointRadius: sortedDates.length > 25 ? 0 : 3,
+          pointBackgroundColor: '#a78bfa',
+          pointBorderWidth: 0,
+          tension: 0.4, fill: true,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { ...tooltipDefaults, callbacks: { label: ctx => ' ' + fmt(Math.round(ctx.raw)) + ' convs' } } },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { maxRotation: 0, maxTicksLimit: 7, font: { size: 10 } } },
+          y: { grid: { color: gridColor }, ticks: { callback: v => fmt(v), font: { size: 10 } } }
+        }
+      }
+    });
+  }
+}
+
+// ── Actions ──
+function setSort(col) {
+  if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = -1; }
+  render();
+}
+function setDDTab(metric, tab) {
+  ddTab[metric] = tab;
+  render();
+}
+function clearDates() {
+  document.getElementById('filter-date-from').value = '';
+  document.getElementById('filter-date-to').value = '';
+  render();
+}
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.classList.add('spinning');
+  allData = [];
+  document.getElementById('main-content').innerHTML = `<div class="loading-state"><div class="spinner"></div><span>Đang tải lại dữ liệu…</span></div>`;
+  loadData().finally(() => {
+    const b = document.getElementById('refresh-btn');
+    if (b) b.classList.remove('spinning');
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
