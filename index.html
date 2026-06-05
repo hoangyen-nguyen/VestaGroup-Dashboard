@@ -768,7 +768,6 @@ function render() {
 
   document.getElementById('main-content').innerHTML = `
 
-    <!-- LAYER 1: FILTER BAR -->
     <div class="filter-bar">
       <span class="filter-label">LỌC</span>
       <div class="filter-group">
@@ -804,7 +803,6 @@ function render() {
       </div>
     </div>
 
-    <!-- LAYER 2: KPI CARDS -->
     <div class="section-header"><span class="section-label">Tổng quan</span><div class="section-rule"></div></div>
     <div class="kpi-grid" style="margin-bottom:28px">
 
@@ -850,7 +848,6 @@ function render() {
 
     </div>
 
-    <!-- LAYER 3a: SPEND CHARTS -->
     <div class="section-header"><span class="section-label">Spend trends</span><div class="section-rule"></div></div>
     <div class="charts-grid" style="margin-bottom:14px">
       <div class="chart-card">
@@ -877,7 +874,6 @@ function render() {
       </div>
     </div>
 
-    <!-- LAYER 3b: TREND CHARTS -->
     <div class="charts-grid-2" style="margin-bottom:28px">
       <div class="chart-card">
         <div class="chart-card-header">
@@ -909,7 +905,6 @@ function render() {
       </div>
     </div>
 
-    <!-- LAYER 4: DEEP DIVE -->
     <div class="section-header"><span class="section-label">Deep dive performance</span><div class="section-rule"></div></div>
     <div class="deepdive-grid">
 
@@ -945,7 +940,6 @@ function render() {
 
     </div>
 
-    <!-- LAYER 5: TOP CREATIVE TABLE -->
     <div class="section-header"><span class="section-label">Top creatives</span><div class="section-rule"></div></div>
     <div class="table-card">
       <div class="table-header">
@@ -980,7 +974,6 @@ function render() {
       </div>
     </div>
 
-    <!-- LAYER 6: AI OBSERVATION (placeholder — Step 2) -->
     <div class="section-header"><span class="section-label">AI Observation</span><div class="section-rule"></div></div>
     <div class="ai-section">
       <div class="ai-section-header">
@@ -990,7 +983,7 @@ function render() {
           </div>
           <div>
             <div class="ai-title">AI-generated insights</div>
-            <div class="ai-subtitle">Powered by Claude — media · format · creative analysis</div>
+            <div class="ai-subtitle">Powered by AI — media · format · creative analysis (Yen Nguyen - 0902049099)</div>
           </div>
         </div>
         <div class="ai-status" id="ai-status">
@@ -1005,7 +998,6 @@ function render() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
           </div>
           <p>AI observation sẽ xuất hiện ở đây</p>
-          <small>Bước 2: Kết nối Cloudflare Worker + Claude API để generate insights realtime</small>
         </div>
       </div>
     </div>
@@ -1222,8 +1214,22 @@ async function generateAIInsights() {
 
     if (!response.ok) throw new Error('Lỗi khi gọi AI từ hệ thống Backend');
     
-    // Đọc dữ liệu JSON trả về từ cấu trúc mã Hugging Face
-    const insights = await response.json(); 
+    // Đọc dữ liệu text thô trả về thay vì ép kiểu JSON trực tiếp
+    const rawText = await response.text(); 
+    let insights = [];
+
+    try {
+      // Dùng Regex để lọc và chỉ lấy phần mảng dữ liệu [...] (Phòng trường hợp AI sinh ra chữ thừa)
+      const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        insights = JSON.parse(jsonMatch[0]);
+      } else {
+        insights = JSON.parse(rawText);
+      }
+    } catch (parseError) {
+      console.error("Dữ liệu thô từ AI không đúng chuẩn JSON:", rawText);
+      throw new Error('AI trả về dữ liệu sai định dạng');
+    }
     
     // Tiến hành ánh xạ dữ liệu và đổ ra cấu trúc thẻ HTML
     aiStatus.textContent = 'Đã cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN');
@@ -1244,7 +1250,7 @@ async function generateAIInsights() {
     aiBody.innerHTML = `
       <div class="error-state">
         <strong>Không thể tải AI Insights</strong>
-        <p>Vui lòng kiểm tra lại trạng thái kết nối của Cloudflare Worker hoặc Token API.</p>
+        <p>Vui lòng kiểm tra lại trạng thái kết nối của Cloudflare Worker hoặc format của AI sinh ra bị sai.</p>
         <button class="btn-ghost" onclick="generateAIInsights()" style="margin: 12px auto 0;">Thử lại</button>
       </div>
     `;
