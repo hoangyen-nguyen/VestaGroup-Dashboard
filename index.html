@@ -1212,14 +1212,19 @@ async function generateAIInsights() {
       body: JSON.stringify(contextData)
     });
 
-    if (!response.ok) throw new Error('Lỗi khi gọi AI từ hệ thống Backend');
+    // 🌟 ĐIỂM NÂNG CẤP: Đọc chính xác lỗi từ Backend để dễ dàng gỡ rối
+    if (!response.ok) {
+      const errorData = await response.json();
+      // Nếu Backend trả về chi tiết lỗi, in nó ra. Nếu không, in lỗi mặc định.
+      throw new Error(errorData.details || errorData.error || 'Lỗi máy chủ không xác định');
+    }
     
-    // Đọc dữ liệu text thô trả về thay vì ép kiểu JSON trực tiếp
+    // Đọc dữ liệu JSON trả về từ hệ thống AI
     const rawText = await response.text(); 
     let insights = [];
 
     try {
-      // Dùng Regex để lọc và chỉ lấy phần mảng dữ liệu [...] (Phòng trường hợp AI sinh ra chữ thừa)
+      // Dùng Regex để lọc mảng JSON an toàn
       const jsonMatch = rawText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         insights = JSON.parse(jsonMatch[0]);
@@ -1227,8 +1232,7 @@ async function generateAIInsights() {
         insights = JSON.parse(rawText);
       }
     } catch (parseError) {
-      console.error("Dữ liệu thô từ AI không đúng chuẩn JSON:", rawText);
-      throw new Error('AI trả về dữ liệu sai định dạng');
+      throw new Error('AI trả về dữ liệu sai định dạng: ' + rawText);
     }
     
     // Tiến hành ánh xạ dữ liệu và đổ ra cấu trúc thẻ HTML
@@ -1236,8 +1240,8 @@ async function generateAIInsights() {
     aiBody.innerHTML = `
       <div class="ai-insights-grid">
         ${insights.map(item => `
-          <div class="ai-insight-card ${item.type.toLowerCase()}">
-            <div class="ai-insight-type">${item.type}</div>
+          <div class="ai-insight-card ${item.type ? item.type.toLowerCase() : 'media'}">
+            <div class="ai-insight-type">${item.type || 'Insight'}</div>
             <div class="ai-insight-text">${item.observation}</div>
             <div class="ai-recommendation"><strong>Action:</strong> ${item.recommendation}</div>
           </div>
@@ -1247,11 +1251,17 @@ async function generateAIInsights() {
   } catch (error) {
     console.error('Đã xảy ra lỗi lập trình:', error);
     aiStatus.textContent = 'Kết nối thất bại';
+    
+    // 🌟 ĐIỂM NÂNG CẤP: Hiển thị lỗi gốc trực tiếp lên giao diện Dashboard
     aiBody.innerHTML = `
-      <div class="error-state">
-        <strong>Không thể tải AI Insights</strong>
-        <p>Vui lòng kiểm tra lại trạng thái kết nối của Cloudflare Worker hoặc format của AI sinh ra bị sai.</p>
-        <button class="btn-ghost" onclick="generateAIInsights()" style="margin: 12px auto 0;">Thử lại</button>
+      <div class="error-state" style="text-align: left; padding: 20px;">
+        <strong style="display: block; margin-bottom: 8px; text-align: center;">Không thể tải AI Insights</strong>
+        <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; font-family: monospace; font-size: 12px; color: var(--red); word-break: break-word;">
+          ${error.message}
+        </div>
+        <div style="text-align: center;">
+          <button class="btn-ghost" onclick="generateAIInsights()" style="margin: 12px auto 0;">Thử lại</button>
+        </div>
       </div>
     `;
   }
