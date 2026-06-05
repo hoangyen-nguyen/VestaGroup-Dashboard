@@ -1196,12 +1196,12 @@ function getAIDataContext() {
   };
 }
 
-// 2. Hàm gọi Cloudflare Worker và Render kết quả
+// Hàm gọi Cloudflare Worker và Render kết quả phân tích dữ liệu
 async function generateAIInsights() {
   const aiBody = document.getElementById('ai-body');
   const aiStatus = document.getElementById('ai-status-text');
   
-  // Hiển thị trạng thái đang tải
+  // Hiển thị trạng thái đang tải dữ liệu lên giao diện
   aiStatus.textContent = 'Đang phân tích...';
   aiBody.innerHTML = `
     <div class="ai-loading" style="justify-content: center; padding: 40px;">
@@ -1213,19 +1213,19 @@ async function generateAIInsights() {
   const contextData = getAIDataContext();
 
   try {
-    // LƯU Ý: Thay URL này bằng URL Cloudflare Worker thực tế của bạn sau khi deploy
-    const response = await fetch('https://your-worker-url.workers.dev/', {
+    // KẾT NỐI ĐẾN CLOUDFLARE WORKER CỦA BẠN
+    const response = await fetch('https://vesta-ai-proxy.hoangyen2796.workers.dev/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(contextData)
     });
 
-    if (!response.ok) throw new Error('Lỗi khi gọi AI');
+    if (!response.ok) throw new Error('Lỗi khi gọi AI từ hệ thống Backend');
     
-    // Đọc kết quả JSON từ Backend trả về
+    // Đọc dữ liệu JSON trả về từ cấu trúc mã Hugging Face
     const insights = await response.json(); 
     
-    // Render kết quả ra giao diện
+    // Tiến hành ánh xạ dữ liệu và đổ ra cấu trúc thẻ HTML
     aiStatus.textContent = 'Đã cập nhật lúc ' + new Date().toLocaleTimeString('vi-VN');
     aiBody.innerHTML = `
       <div class="ai-insights-grid">
@@ -1239,12 +1239,12 @@ async function generateAIInsights() {
       </div>
     `;
   } catch (error) {
-    console.error(error);
+    console.error('Đã xảy ra lỗi lập trình:', error);
     aiStatus.textContent = 'Kết nối thất bại';
     aiBody.innerHTML = `
       <div class="error-state">
         <strong>Không thể tải AI Insights</strong>
-        <p>Vui lòng kiểm tra lại kết nối backend hoặc API Key.</p>
+        <p>Vui lòng kiểm tra lại trạng thái kết nối của Cloudflare Worker hoặc Token API.</p>
         <button class="btn-ghost" onclick="generateAIInsights()" style="margin: 12px auto 0;">Thử lại</button>
       </div>
     `;
