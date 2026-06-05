@@ -816,12 +816,12 @@ function render() {
         </div>
       </div>
 
-      <div class="kpi-card">
+<div class="kpi-card">
         <div class="kpi-accent-bar" style="background:${accent}"></div>
         <div class="kpi-label">Total Impressions</div>
         <div class="kpi-value">${fmt(agg.impressions)}</div>
         <div class="kpi-footer">
-          <span class="kpi-sub">Reach ${fmt(agg.reach)}</span>
+          <span class="kpi-sub"></span>
           ${fmtDelta(computeDelta(agg.impressions, prevAgg.impressions))}
         </div>
       </div>
