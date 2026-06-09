@@ -479,7 +479,8 @@ function refreshData(){
 
 // ── Tiến hành kết xuất luồng HTML chính ──
 function render(){
-  const brandData=allData.filter(r=>r['Brand']===currentBrand);
+  // Tự động xóa khoảng trắng và chuyển về viết thường để ép khớp dữ liệu 100%
+  const brandData=allData.filter(r=>r['Brand'] && r['Brand'].trim().toLowerCase() === currentBrand.trim().toLowerCase());
   const filtered=applyFilters(brandData);
   const accentHex=currentBrand==='Banan'?'#f5c842':'#5b8ef0';
   const accentVar=currentBrand==='Banan'?'var(--banan)':'var(--ttr)';
