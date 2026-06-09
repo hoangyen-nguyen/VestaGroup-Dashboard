@@ -159,14 +159,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .hook-mid{background:var(--orange-bg);color:var(--orange)}
 .hook-low{background:var(--red-bg);color:var(--red)}
 
-/* SCORE PILL (Option A) */
+/* SCORE PILL */
 .score-pill{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px}
 .score-hi{background:var(--green-bg);color:var(--green)}
 .score-mid{background:var(--orange-bg);color:var(--orange)}
 .score-lo{background:var(--red-bg);color:var(--red)}
 .score-na{color:var(--text3)}
 
-/* BEST FOR (Option B) */
+/* BEST FOR */
 .best-tags{display:flex;gap:3px;flex-wrap:wrap}
 .best-tag{display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:600;white-space:nowrap}
 .best-awareness{background:rgba(167,139,250,.15);color:var(--purple)}
@@ -217,31 +217,51 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <script>
 // ── Config ──
 const SHEET_ID='1wqArly1SMp4ahfnccMT1nKYal9A_VDg-DsIF8gRBkLA';
-// gviz/tq is the only URL that works from browser without CORS issues
-// export?format=csv requires auth redirect and fails from GitHub Pages
-const CSV_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Sheet1&_=${Date.now()}`;
+// Sử dụng cổng xuất dữ liệu trực tiếp để tránh lỗi phân biệt tên Sheet1/Trang tính1
+const CSV_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0&_=${Date.now()}`;
 
 let allData=[],currentBrand='Banan',charts={};
 let sortCol='spend',sortDir=-1;
 let ddTab={visit:'format',conv:'format'};
 let trendMetric='spend';
 
-// ── CSV ──
+// ── CSV Parser ──
 function parseCSVLine(line){
   const r=[];let c='',q=false;
   for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){q=!q}else if(ch===','&&!q){r.push(c);c=''}else c+=ch}
   r.push(c);return r;
 }
 function parseCSV(text){
-  const lines=text.trim().split('\n');
-  const headers=parseCSVLine(lines[0]);
+  const lines=text.split(/\r?\n/).filter(l => l.trim() !== '');
+  if(lines.length === 0) return [];
+  const headers=parseCSVLine(lines[0]).map(h => h.trim());
+  
+  // In các cột tìm thấy ra F12 để kiểm tra tiêu đề trùng khớp
+  console.log("📊 Khớp dữ liệu thành công! Tìm thấy các cột:", headers);
+
   return lines.slice(1).map(l=>{
     const v=parseCSVLine(l),o={};
-    headers.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim());
-    // Normalize M/D/YYYY or MM/DD/YYYY → YYYY-MM-DD for correct sort & date filter
-    if(o['Date']&&o['Date'].includes('/')){
+    headers.forEach((h,i)=>o[h]=(v[i]||'').trim());
+    
+    // Bộ giải mã ngày thông minh: Xử lý cả định dạng VN (DD/MM/YYYY) và Mỹ (MM/DD/YYYY)
+    if(o['Date'] && o['Date'].includes('/')){
       const p=o['Date'].split('/');
-      if(p.length===3)o['Date']=p[2]+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');
+      if(p.length===3){
+        if(p[0].length === 4){ // Trường hợp YYYY/MM/DD
+          o['Date']=`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;
+        } else {
+          let day = p[0];
+          let month = p[1];
+          let year = p[2];
+          // Nếu phần tử thứ 2 lớn hơn 12, chứng tỏ cấu trúc đang là MM/DD/YYYY
+          if(parseInt(month) > 12){
+            let temp = day;
+            day = month;
+            month = temp;
+          }
+          o['Date']=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+        }
+      }
     }
     return o;
   });
@@ -283,10 +303,6 @@ function aggregate(rows){
 }
 
 // ── OPTION A: Relative Score ──
-// Compares each creative vs the average of the current filtered batch.
-// Score reflects relative performance — 100 = best in this period.
-// Weights: CTR 35% · CPM 25% · CPA 25% · CVR 15%
-// Each dimension: score = (avg/this) for lower-is-better, (this/avg) for higher-is-better, capped [0, 2]
 function buildScoreCtx(crMap){
   const vals=Object.values(crMap).filter(d=>d.spend>0);
   const avg=arr=>arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0;
@@ -319,8 +335,6 @@ function scorePill(s){
 }
 
 // ── OPTION B: Best For tags ──
-// Top 3 per metric across current batch get a label.
-// Each creative can have 0–4 tags.
 function buildBestFor(crMap){
   const entries=Object.entries(crMap).filter(([,d])=>d.spend>0);
   const tag=(sorted,n,key,label,cls)=>{
@@ -330,22 +344,16 @@ function buildBestFor(crMap){
     });
   };
   const bestFor={};
-  // CPM efficiency → Awareness reach
   const byCPM=entries.filter(([,d])=>d.imp>0).sort((a,b)=>(a[1].spend/a[1].imp)-(b[1].spend/b[1].imp));
   tag(byCPM,3,'cpm','📢 Awareness','best-awareness');
-  // Cost/Conv → Conversation
   const byConv=entries.filter(([,d])=>d.convs>0).sort((a,b)=>(a[1].spend/a[1].convs)-(b[1].spend/b[1].convs));
   tag(byConv,3,'cpconv','💬 Conv','best-conv');
-  // Cost/IG Visit
   const byVisit=entries.filter(([,d])=>d.igVisit>0).sort((a,b)=>(a[1].spend/a[1].igVisit)-(b[1].spend/b[1].igVisit));
   tag(byVisit,3,'cpig','📸 IG Visit','best-visit');
-  // Hook Rate (video only)
   const byHook=entries.filter(([,d])=>d.vid3s>0&&d.imp>0).sort((a,b)=>(b[1].vid3s/b[1].imp)-(a[1].vid3s/a[1].imp));
   tag(byHook,3,'hook','🎣 Hook','best-hook');
-  // CTR
   const byCTR=entries.filter(([,d])=>d.imp>0).sort((a,b)=>(b[1].clicks/b[1].imp)-(a[1].clicks/a[1].imp));
   tag(byCTR,3,'ctr','🖱 CTR','best-ctr');
-  // CPA (results)
   const byCPA=entries.filter(([,d])=>d.results>0).sort((a,b)=>(a[1].spend/a[1].results)-(b[1].spend/b[1].results));
   tag(byCPA,3,'cpa','🏆 CPA','best-cpa');
   return bestFor;
@@ -424,16 +432,21 @@ function renderDD(rows,color){
 // ── Load ──
 async function loadData(){
   try{
-    // gviz/tq works cross-origin when sheet is public (Anyone with link)
     const res=await fetch(CSV_URL);
-    if(!res.ok)throw new Error('HTTP '+res.status+' — make sure Google Sheet is shared as Anyone with the link');
+    if(!res.ok)throw new Error('HTTP '+res.status+' — Vui lòng cấu hình Google Sheet ở trạng thái: Bất kỳ ai có liên kết đều xem được.');
     const text=await res.text();
-    if(!text.includes(','))throw new Error('Empty response — check sheet name is Sheet1 and sharing is public');
+    if(!text.includes(','))throw new Error('Không thể đọc cấu trúc CSV. Hãy kiểm tra tab chứa dữ liệu có phải là tab đầu tiên không.');
+    
     allData=parseCSV(text).filter(r=>r['Brand']&&r['Date']);
+    
+    if(allData.length === 0) {
+      throw new Error("Không lọc được hàng dữ liệu nào. Hãy kiểm tra cột 'Brand' và 'Date' trên file Excel có viết chính xác chữ hoa chữ thường không.");
+    }
+
     document.getElementById('update-time').textContent='Updated '+new Date().toLocaleTimeString('vi-VN');
     render();
   }catch(e){
-    document.getElementById('main-content').innerHTML=`<div class="error-state"><strong>Could not load data</strong><p>${e.message}</p></div>`;
+    document.getElementById('main-content').innerHTML=`<div class="error-state"><strong>Lỗi đồng bộ dữ liệu Google Sheet</strong><p>${e.message}</p></div>`;
   }
 }
 
@@ -535,7 +548,6 @@ function render(){
     crMap[k].vid3s+=num(r,'3-second video plays');
   });
 
-  // Build score context (Option A) and best-for map (Option B)
   const scoreCtx=buildScoreCtx(crMap);
   const bestForMap=buildBestFor(crMap);
 
@@ -567,7 +579,7 @@ function render(){
   };
   const trendLabel={spend:'Spend (VND)',igVisit:'IG Profile Visits',convs:'Conversations',clicks:'Link Clicks',ctr:'CTR (%)',hookRate:'Hook Rate (%)'};
   const trendColor={spend:accentHex,igVisit:'#34d399',convs:'#a78bfa',clicks:'#5b8ef0',ctr:'#fb923c',hookRate:'#f472b6'};
-  const dateLabels=sortedDates.map(d=>{const dt=new Date(d);return dt.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})});
+  const dateValues=sortedDates.map(d=>{const dt=new Date(d);return dt.toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit'})});
 
   // Table rows
   const tableRows=sortedCreatives.map(([name,d])=>{
@@ -604,7 +616,6 @@ function render(){
 
   document.getElementById('main-content').innerHTML=`
 
-    <!-- FILTER BAR -->
     <div class="filter-bar">
       <span class="filter-label">Filter</span>
       <select id="filter-month" onchange="render()">
@@ -632,7 +643,6 @@ function render(){
       </div>
     </div>
 
-    <!-- KPI ROW 1: Core delivery -->
     <div class="section-header"><span class="section-label">Core delivery</span><div class="section-rule"></div></div>
     <div class="kpi-grid" style="margin-bottom:10px">
       <div class="kpi-card"><div class="kpi-accent" style="background:${accentVar}"></div>
@@ -662,168 +672,9 @@ function render(){
       </div>
     </div>
 
-    <!-- KPI ROW 2: Efficiency -->
     <div class="section-header"><span class="section-label">Efficiency metrics</span><div class="section-rule"></div></div>
     <div class="kpi-grid-2" style="margin-bottom:20px">
       <div class="kpi-card"><div class="kpi-accent" style="background:var(--orange)"></div>
         <div class="kpi-label">CTR — Click-Through Rate</div>
         <div class="kpi-value" style="color:var(--orange)">${fmtPct(a.ctr)}</div>
         <div class="kpi-footer"><span class="kpi-sub">Clicks ÷ Impressions</span>${mkDelta(a.ctr,p.ctr)}</div>
-      </div>
-      <div class="kpi-card"><div class="kpi-accent" style="background:var(--purple)"></div>
-        <div class="kpi-label">CVR — Conversion Rate</div>
-        <div class="kpi-value" style="color:var(--purple)">${fmtPct(a.cvr)}</div>
-        <div class="kpi-footer"><span class="kpi-sub">Conversations ÷ Clicks</span>${mkDelta(a.cvr,p.cvr)}</div>
-      </div>
-      <div class="kpi-card"><div class="kpi-accent" style="background:var(--pink)"></div>
-        <div class="kpi-label">Hook Rate (Video only)</div>
-        <div class="kpi-value" style="color:var(--pink)">${fmtPct(a.hookRate)}</div>
-        <div class="kpi-footer"><span class="kpi-sub">3s Views ÷ Impressions</span>${mkDelta(a.hookRate,p.hookRate)}</div>
-      </div>
-      <div class="kpi-card"><div class="kpi-accent" style="background:var(--green)"></div>
-        <div class="kpi-label">CPA — Cost per Result</div>
-        <div class="kpi-value" style="color:var(--green)">${a.cpa>0?fmtVND(Math.round(a.cpa)):'—'}</div>
-        <div class="kpi-footer"><span class="kpi-sub">${fmt(a.results)} results total</span>${mkDelta(a.cpa,p.cpa,true)}</div>
-      </div>
-    </div>
-
-    <!-- TRENDS -->
-    <div class="section-header"><span class="section-label">Trends</span><div class="section-rule"></div></div>
-    <div class="metric-toggle">
-      ${[['spend','Spend'],['igVisit','IG Visits'],['convs','Conversations'],['clicks','Clicks'],['ctr','CTR'],['hookRate','Hook Rate']].map(([m,lbl])=>`<button class="mtbtn${trendMetric===m?' active':''}" onclick="setTrendMetric('${m}')">${lbl}</button>`).join('')}
-    </div>
-    <div class="charts-grid" style="margin-bottom:12px">
-      <div class="chart-card">
-        <div class="chart-card-title">${trendLabel[trendMetric]} — by day</div>
-        <div class="chart-card-sub">${sortedDates.length} days · ${filtered.length} rows</div>
-        <div class="chart-wrap" style="height:190px"><canvas id="chart-trend"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-card-title">Spend by Activity</div>
-        <div class="chart-card-sub">${Object.keys(actSpend).length} activities</div>
-        <div class="chart-wrap" style="height:190px"><canvas id="chart-activity"></canvas></div>
-      </div>
-    </div>
-    <div class="charts-grid-2" style="margin-bottom:24px">
-      <div class="chart-card">
-        <div class="chart-card-title">IG Visit Profile — daily</div>
-        <div class="chart-card-sub">Profile visits per day</div>
-        <div class="chart-wrap" style="height:140px"><canvas id="chart-igvisit"></canvas></div>
-      </div>
-      <div class="chart-card">
-        <div class="chart-card-title">Conversation — daily</div>
-        <div class="chart-card-sub">Conversations started per day</div>
-        <div class="chart-wrap" style="height:140px"><canvas id="chart-conv"></canvas></div>
-      </div>
-    </div>
-
-    <!-- DEEP DIVE -->
-    <div class="section-header"><span class="section-label">Deep dive</span><div class="section-rule"></div></div>
-    <div class="deepdive-grid" style="margin-bottom:24px">
-      <div class="deepdive-card">
-        <div class="deepdive-head">
-          <div class="deepdive-title">IG Visit Profile — Best performers</div>
-          <div class="dd-tabs">
-            <button class="dd-tab${ddTab.visit==='format'?' active':''}" onclick="setDDTab('visit','format')">By Format</button>
-            <button class="dd-tab${ddTab.visit==='creative'?' active':''}" onclick="setDDTab('visit','creative')">By Creative</button>
-          </div>
-        </div>
-        <div class="deepdive-body">${renderDD(ddIG,'#34d399')}</div>
-      </div>
-      <div class="deepdive-card">
-        <div class="deepdive-head">
-          <div class="deepdive-title">Conversation — Best performers</div>
-          <div class="dd-tabs">
-            <button class="dd-tab${ddTab.conv==='format'?' active':''}" onclick="setDDTab('conv','format')">By Format</button>
-            <button class="dd-tab${ddTab.conv==='creative'?' active':''}" onclick="setDDTab('conv','creative')">By Creative</button>
-          </div>
-        </div>
-        <div class="deepdive-body">${renderDD(ddConv,'#a78bfa')}</div>
-      </div>
-    </div>
-
-    <!-- TABLE -->
-    <div class="section-header"><span class="section-label">Creative performance table</span><div class="section-rule"></div></div>
-    <div class="note-bar">
-      <strong>Score</strong> (Option A) — so sánh mỗi creative với mức trung bình của batch hiện tại · CTR 35% · CPM 25% · CPA 25% · CVR 15% · Score 100 = tốt nhất trong period đang filter<br>
-      <strong>Best For</strong> (Option B) — top 3 creatives per metric: 📢 Awareness (CPM) · 💬 Conv (Cost/Conv) · 📸 IG Visit (Cost/Visit) · 🎣 Hook Rate · 🖱 CTR · 🏆 CPA
-    </div>
-    <div class="table-card" style="margin-bottom:40px">
-      <div class="table-head">
-        <div>
-          <div class="table-title">Top Creatives — full metrics</div>
-          <div class="table-meta">${sortedCreatives.length} creatives · sorted by ${sortCol}</div>
-        </div>
-        <div class="sort-bar">
-          ${[['spend','Spend'],['results','Results'],['ctr','CTR'],['hook','Hook'],['score','Score']].map(([c,l])=>`<button class="sort-btn${sortCol===c?' active':''}" onclick="setSort('${c}')">${l}</button>`).join('')}
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th onclick="setSort('spend')" class="${thCls('spend')}">Creative</th>
-            <th>Objective</th>
-            <th>Activity</th>
-            <th>Format</th>
-            <th onclick="setSort('spend')" class="${thCls('spend')}">Spend</th>
-            <th onclick="setSort('imp')" class="${thCls('imp')}">Impressions</th>
-            <th>CPM</th>
-            <th onclick="setSort('clicks')" class="${thCls('clicks')}">Clicks</th>
-            <th onclick="setSort('ctr')" class="${thCls('ctr')}">CTR</th>
-            <th>IG Visit</th>
-            <th>Cost/Visit</th>
-            <th>Conv</th>
-            <th>Cost/Conv</th>
-            <th onclick="setSort('cpa')" class="${thCls('cpa')}">CPA</th>
-            <th>CVR</th>
-            <th onclick="setSort('hook')" class="${thCls('hook')}">Hook Rate</th>
-            <th onclick="setSort('score')" class="${thCls('score')}">Score ↗</th>
-            <th>Best For</th>
-          </tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  // ── Charts ──
-  Object.values(charts).forEach(c=>{try{c.destroy()}catch(_){}});charts={};
-  const gc='rgba(255,255,255,0.04)';
-  Chart.defaults.color='#555e6e';
-  Chart.defaults.font.family="'DM Sans',sans-serif";
-  Chart.defaults.font.size=11;
-  const mkTT=(fmtFn)=>({backgroundColor:'#1a1e26',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,titleColor:'#e8eaf0',bodyColor:'#9aa3b2',callbacks:{label:ctx=>` ${fmtFn(ctx.raw)}`}});
-
-  // Trend
-  const ctxT=document.getElementById('chart-trend');
-  if(ctxT&&sortedDates.length){
-    const c=trendColor[trendMetric];
-    const fmtFn=trendMetric==='spend'?v=>fmtVND(Math.round(v)):['ctr','hookRate'].includes(trendMetric)?v=>v.toFixed(2)+'%':v=>fmt(Math.round(v));
-    charts.trend=new Chart(ctxT,{type:'line',data:{labels:dateLabels,datasets:[{data:trendSets[trendMetric],borderColor:c,backgroundColor:c+'18',borderWidth:2,pointRadius:sortedDates.length>25?0:3,pointBackgroundColor:c,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(fmtFn)},scales:{x:{grid:{color:gc},ticks:{maxRotation:0,maxTicksLimit:8}},y:{grid:{color:gc},ticks:{callback:fmtFn}}}}});
-  }
-
-  // Activity bar
-  const ctxA=document.getElementById('chart-activity');
-  if(ctxA){
-    const acts=Object.keys(actSpend).sort((a,b)=>actSpend[b]-actSpend[a]);
-    const pal=[accentHex,'#34d399','#a78bfa','#fb923c','#f87171','#5b8ef0','#f472b6'];
-    charts.act=new Chart(ctxA,{type:'bar',data:{labels:acts,datasets:[{data:acts.map(ac=>actSpend[ac]),backgroundColor:acts.map((_,i)=>pal[i%pal.length]+'bb'),borderColor:acts.map((_,i)=>pal[i%pal.length]),borderWidth:1,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(v=>fmtVND(Math.round(v)))},scales:{x:{grid:{color:'transparent'},ticks:{font:{size:10}}},y:{grid:{color:gc},ticks:{callback:v=>fmtVND(v)}}}}});
-  }
-
-  // IG Visit trend
-  const ctxIG=document.getElementById('chart-igvisit');
-  if(ctxIG){
-    charts.ig=new Chart(ctxIG,{type:'line',data:{labels:dateLabels,datasets:[{data:sortedDates.map(d=>byDate.igVisit[d]||0),borderColor:'#34d399',backgroundColor:'#34d39914',borderWidth:2,pointRadius:sortedDates.length>25?0:3,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(v=>fmt(Math.round(v)))},scales:{x:{grid:{color:gc},ticks:{maxRotation:0,maxTicksLimit:6}},y:{grid:{color:gc}}}}});
-  }
-
-  // Conv trend
-  const ctxC=document.getElementById('chart-conv');
-  if(ctxC){
-    charts.conv=new Chart(ctxC,{type:'line',data:{labels:dateLabels,datasets:[{data:sortedDates.map(d=>byDate.convs[d]||0),borderColor:'#a78bfa',backgroundColor:'#a78bfa14',borderWidth:2,pointRadius:sortedDates.length>25?0:3,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(v=>fmt(Math.round(v)))},scales:{x:{grid:{color:gc},ticks:{maxRotation:0,maxTicksLimit:6}},y:{grid:{color:gc}}}}});
-  }
-}
-
-loadData();
-</script>
-</body>
-</html>
