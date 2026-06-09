@@ -217,7 +217,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <script>
 // ── Config ──
 const SHEET_ID='1wqArly1SMp4ahfnccMT1nKYal9A_VDg-DsIF8gRBkLA';
-// Chuyển sang endpoint gviz/tq kèm tham số gid=0 để tự động bốc tab đầu tiên, chống lỗi phân biệt tên Sheet1/Trang tính1
+// Sử dụng gviz/tq kèm gid=0 để tránh dính lỗi bảo mật CORS trên GitHub Pages công khai
 const CSV_URL=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0&_=${Date.now()}`;
 
 let allData=[],currentBrand='Banan',charts={};
@@ -242,12 +242,12 @@ function parseCSV(text){
     const v=parseCSVLine(l),o={};
     headers.forEach((h,i)=>o[h]=(v[i]||'').trim());
     
-    // Bộ phân tách giải mã ngày thông minh: Chấp nhận cả định dạng VN (DD/MM/YYYY) và Mỹ (MM/DD/YYYY)
-    if(o['Date'] && o['Date'].includes('/')){
-      const p=o['Date'].split('/');
+    // Đọc cột ngày tháng 'Day' thay vì 'Date'
+    if(o['Day'] && o['Day'].includes('/')){
+      const p=o['Day'].split('/');
       if(p.length===3){
         if(p[0].length === 4){
-          o['Date']=`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;
+          o['Day']=`${p[0]}-${p[1].padStart(2,'0')}-${p[2].padStart(2,'0')}`;
         } else {
           let day = p[0];
           let month = p[1];
@@ -257,7 +257,7 @@ function parseCSV(text){
             day = month;
             month = temp;
           }
-          o['Date']=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
+          o['Day']=`${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`;
         }
       }
     }
@@ -283,10 +283,13 @@ function aggregate(rows){
   const imp=rows.reduce((s,r)=>s+num(r,'Impressions'),0);
   const spend=rows.reduce((s,r)=>s+num(r,'Amount spent (VND)'),0);
   const clicks=rows.reduce((s,r)=>s+num(r,'Link clicks'),0);
-  const results=rows.reduce((s,r)=>s+num(r,'Results'),0);
   const convs=rows.reduce((s,r)=>s+num(r,'Messaging conversations started'),0);
   const igVisit=rows.reduce((s,r)=>s+num(r,'Instagram profile visits'),0);
   const vid3s=rows.reduce((s,r)=>s+num(r,'3-second video plays'),0);
+  
+  // Tự động gộp dữ liệu kết quả (Results) dựa trên data thực tế có trên sheet
+  const results=rows.reduce((s,r)=>s + (num(r,'Results') || num(r,'Messaging conversations started') || num(r,'Instagram profile visits')), 0);
+
   return{
     imp,spend,clicks,results,convs,igVisit,vid3s,
     cpm:imp>0?spend/imp*1000:0,
@@ -332,7 +335,7 @@ function scorePill(s){
   return`<span class="score-pill ${cls}">${icon} ${s}</span>`;
 }
 
-// ── HƯỚNG 2: Tự Động Đua Top 3 Gắn Nhãn Best For Chiến Lược ──
+// ── HƯỚNG 2: Tự Động Gắn Nhãn Best For ──
 function buildBestFor(crMap){
   const entries=Object.entries(crMap).filter(([,d])=>d.spend>0);
   const tag=(sorted,n,key,label,cls)=>{
@@ -361,7 +364,7 @@ function bestForCell(tags){
   return`<div class="best-tags">${tags.map(t=>`<span class="best-tag ${t.cls}">${t.label}</span>`).join('')}</div>`;
 }
 
-// ── Các hàm bổ trợ render ──
+// ── Render Helpers ──
 function hookBadge(p){
   if(p===null||p===undefined)return'—';
   const cls=p>=25?'hook-good':p>=10?'hook-mid':'hook-low';
@@ -385,10 +388,10 @@ function deepDiveRows(data,metric,groupCol){
     map[k].spend+=num(r,'Amount spent (VND)');
     map[k].imp+=num(r,'Impressions');
     map[k].clicks+=num(r,'Link clicks');
-    map[k].results+=num(r,'Results');
     map[k].convs+=num(r,'Messaging conversations started');
     map[k].igVisit+=num(r,'Instagram profile visits');
     map[k].vid3s+=num(r,'3-second video plays');
+    map[k].results+=num(r,'Results') || num(r,'Messaging conversations started') || num(r,'Instagram profile visits');
   });
   const getVal=v=>{switch(metric){
     case'igVisit':return v.igVisit;
@@ -426,17 +429,24 @@ function renderDD(rows,color){
   </div>`).join('');
 }
 
-// ── Khởi động mạng ──
+// ── Kết nối và tải dữ liệu ──
 async function loadData(){
-  try{
+  try {
     const res=await fetch(CSV_URL);
     if(!res.ok)throw new Error('HTTP '+res.status+' — Hãy mở cài đặt Google Sheet thành: Bất kỳ ai có liên kết đều xem được.');
     const text=await res.text();
     if(!text.includes(','))throw new Error('Định dạng bảng sai hoặc rỗng — hãy kiểm tra lại file dữ liệu.');
-    allData=parseCSV(text).filter(r=>r['Brand']&&r['Date']);
+    
+    // Quét và kết nối dữ liệu cột thương hiệu cùng cột ngày 'Day' mới
+    allData=parseCSV(text).filter(r=>r['Brand'] && r['Day']);
+    
+    if(allData.length === 0) {
+      throw new Error("Không hút được hàng dữ liệu nào. Hãy kiểm tra chữ hoa thường ở cột 'Brand' và cột 'Day'.");
+    }
+
     document.getElementById('update-time').textContent='Updated '+new Date().toLocaleTimeString('vi-VN');
     render();
-  }catch(e){
+  } catch(e) {
     document.getElementById('main-content').innerHTML=`<div class="error-state"><strong>Lỗi đồng bộ dữ liệu Google Sheet</strong><p>${e.message}</p></div>`;
   }
 }
@@ -460,8 +470,8 @@ function applyFilters(data){
     if(f.month!=='all'&&r['Month']!==f.month)return false;
     if(f.activity!=='all'&&r['Activities']!==f.activity)return false;
     if(f.objective!=='all'&&r['Objective']!==f.objective)return false;
-    if(f.dateFrom&&r['Date']<f.dateFrom)return false;
-    if(f.dateTo&&r['Date']>f.dateTo)return false;
+    if(f.dateFrom&&r['Day']<f.dateFrom)return false;
+    if(f.dateTo&&r['Day']>f.dateTo)return false;
     return true;
   });
 }
@@ -477,9 +487,9 @@ function refreshData(){
   loadData().finally(()=>{const b=document.getElementById('refresh-btn');if(b)b.classList.remove('spinning')});
 }
 
-// ── Tiến hành kết xuất luồng HTML chính ──
+// ── Hàm render luồng HTML ──
 function render(){
-  // Tự động xóa khoảng trắng và chuyển về viết thường để ép khớp dữ liệu 100%
+  // Khớp dữ liệu không phân biệt hoa thường và tự động xóa dấu cách trống
   const brandData=allData.filter(r=>r['Brand'] && r['Brand'].trim().toLowerCase() === currentBrand.trim().toLowerCase());
   const filtered=applyFilters(brandData);
   const accentHex=currentBrand==='Banan'?'#f5c842':'#5b8ef0';
@@ -493,21 +503,21 @@ function render(){
   const a=aggregate(filtered);
 
   // Previous period
-  const fDates=filtered.map(r=>r['Date']).filter(Boolean).sort();
+  const fDates=filtered.map(r=>r['Day']).filter(Boolean).sort();
   let prevRows=[];
   if(fDates.length){
     const nDays=Math.max(1,Math.ceil((new Date(fDates[fDates.length-1])-new Date(fDates[0]))/86400000)+1);
     const curFrom=new Date(fDates[0]);
     const prevTo=new Date(curFrom.getTime()-86400000);
     const prevFrom=new Date(prevTo.getTime()-nDays*86400000);
-    prevRows=brandData.filter(r=>{if(!r['Date'])return false;const d=new Date(r['Date']);return d>=prevFrom&&d<=prevTo});
+    prevRows=brandData.filter(r=>{if(!r['Day'])return false;const d=new Date(r['Day']);return d>=prevFrom&&d<=prevTo});
   }
   const p=aggregate(prevRows);
 
   // Trend by date
   const byDate={spend:{},igVisit:{},convs:{},clicks:{},_imp:{},_vid3s:{}};
   filtered.forEach(r=>{
-    const d=r['Date'];if(!d)return;
+    const d=r['Day'];if(!d)return;
     byDate.spend[d]=(byDate.spend[d]||0)+num(r,'Amount spent (VND)');
     byDate.igVisit[d]=(byDate.igVisit[d]||0)+num(r,'Instagram profile visits');
     byDate.convs[d]=(byDate.convs[d]||0)+num(r,'Messaging conversations started');
@@ -515,16 +525,18 @@ function render(){
     byDate._imp[d]=(byDate._imp[d]||0)+num(r,'Impressions');
     byDate._vid3s[d]=(byDate._vid3s[d]||0)+num(r,'3-second video plays');
   });
-  const sortedDates=Object.keys(byDate.spend).sort((a,b)=>new Date(a)-new Date(b));
+  const sortedDates=Object.keys(byDate.spend).sort((x,y)=>new Date(x)-new Date(y));
   const ctrByDate={},hookByDate={};
   sortedDates.forEach(d=>{
     ctrByDate[d]=byDate._imp[d]>0?byDate.clicks[d]/byDate._imp[d]*100:0;
     hookByDate[d]=byDate._imp[d]>0?byDate._vid3s[d]/byDate._imp[d]*100:0;
   });
 
+  // Activity spend
   const actSpend={};
   filtered.forEach(r=>{const ac=r['Activities']||'Other';actSpend[ac]=(actSpend[ac]||0)+num(r,'Amount spent (VND)')});
 
+  // Creative Map
   const crMap={};
   filtered.forEach(r=>{
     const k=r['Creative Name']||r['Ad name']||'—';
@@ -532,15 +544,16 @@ function render(){
     crMap[k].spend+=num(r,'Amount spent (VND)');
     crMap[k].imp+=num(r,'Impressions');
     crMap[k].clicks+=num(r,'Link clicks');
-    crMap[k].results+=num(r,'Results');
     crMap[k].convs+=num(r,'Messaging conversations started');
     crMap[k].igVisit+=num(r,'Instagram profile visits');
     crMap[k].vid3s+=num(r,'3-second video plays');
+    crMap[k].results+=num(r,'Results') || num(r,'Messaging conversations started') || num(r,'Instagram profile visits');
   });
 
   const scoreCtx=buildScoreCtx(crMap);
   const bestForMap=buildBestFor(crMap);
 
+  // Sắp xếp Creative quảng cáo
   const sortFns={
     spend:(x,y)=>sortDir*(y[1].spend-x[1].spend),
     imp:(x,y)=>sortDir*(y[1].imp-x[1].imp),
@@ -600,7 +613,7 @@ function render(){
     </tr>`;
   }).join('');
 
-  // 🌟 NÂNG CẤP: Chuyển logic mảng .map() ra ngoài chuỗi literal lớn để tránh xung đột cú pháp dấu nháy
+  // Tách biệt logic vòng lặp tránh xung đột chuỗi ký tự backtick
   const monthOptionsHtml = months.map(m=>`<option value="${m}"${m===saved.month?' selected':''}>${m}</option>`).join('');
   const activityOptionsHtml = activities.map(ac=>`<option value="${ac}"${ac===saved.activity?' selected':''}>${ac}</option>`).join('');
   const objectiveOptionsHtml = objectives.map(o=>`<option value="${o}"${o===saved.objective?' selected':''}>${o}</option>`).join('');
@@ -773,7 +786,7 @@ function render(){
     </div>
   `;
 
-  // ── Khởi tạo cấu trúc đồ thị Chart.js ──
+  // ── Đồ thị hiển thị trực quan ──
   Object.values(charts).forEach(c=>{try{c.destroy()}catch(_){}});charts={};
   const gc='rgba(255,255,255,0.04)';
   Chart.defaults.color='#555e6e';
@@ -781,7 +794,7 @@ function render(){
   Chart.defaults.font.size=11;
   const mkTT=(fmtFn)=>({backgroundColor:'#1a1e26',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,padding:10,titleColor:'#e8eaf0',bodyColor:'#9aa3b2',callbacks:{label:ctx=>` ${fmtFn(ctx.raw)}`}});
 
-  // Đồ thị Trend chính
+  // Đồ thị xu hướng chính
   const ctxT=document.getElementById('chart-trend');
   if(ctxT&&sortedDates.length){
     const c=trendColor[trendMetric];
@@ -789,15 +802,15 @@ function render(){
     charts.trend=new Chart(ctxT,{type:'line',data:{labels:dateValues,datasets:[{data:trendSets[trendMetric],borderColor:c,backgroundColor:c+'18',borderWidth:2,pointRadius:sortedDates.length>25?0:3,pointBackgroundColor:c,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(fmtFn)},scales:{x:{grid:{color:gc},ticks:{maxRotation:0,maxTicksLimit:8}},y:{grid:{color:gc},ticks:{callback:fmtFn}}}}});
   }
 
-  // Đồ thị cột chi tiêu chiến dịch (Activity)
+  // Đồ thị hoạt động chi tiêu chiến dịch
   const ctxA=document.getElementById('chart-activity');
   if(ctxA){
-    const acts=Object.keys(actSpend).sort((a,b)=>actSpend[b]-actSpend[a]);
+    const acts=Object.keys(actSpend).sort((x,y)=>actSpend[y]-actSpend[x]);
     const pal=[accentHex,'#34d399','#a78bfa','#fb923c','#f87171','#5b8ef0','#f472b6'];
     charts.act=new Chart(ctxA,{type:'bar',data:{labels:acts,datasets:[{data:acts.map(ac=>actSpend[ac]),backgroundColor:acts.map((_,i)=>pal[i%pal.length]+'bb'),borderColor:acts.map((_,i)=>pal[i%pal.length]),borderWidth:1,borderRadius:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(v=>fmtVND(Math.round(v)))},scales:{x:{grid:{color:'transparent'},ticks:{font:{size:10}}},y:{grid:{color:gc},ticks:{callback:v=>fmtVND(v)}}}}});
   }
 
-  // Đồ thị IG profile visit
+  // Đồ thị IG profile visits
   const ctxIG=document.getElementById('chart-igvisit');
   if(ctxIG){
     charts.ig=new Chart(ctxIG,{type:'line',data:{labels:dateValues,datasets:[{data:sortedDates.map(d=>byDate.igVisit[d]||0),borderColor:'#34d399',backgroundColor:'#34d39914',borderWidth:2,pointRadius:sortedDates.length>25?0:3,tension:.4,fill:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:mkTT(v=>fmt(Math.round(v)))},scales:{x:{grid:{color:gc},ticks:{maxRotation:0,maxTicksLimit:6}},y:{grid:{color:gc}}}}});
